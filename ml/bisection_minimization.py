@@ -25,7 +25,10 @@ from bokeh.plotting import figure, show
 from bokeh.io import output_notebook
 # output_notebook()
 
-
+# A min outside the search range
+def almost_lin( x, b = 1, a = 0.001, noise = 0.1):
+    return 1 + b*x + a*x*x + noise*np.random.random_sample()
+    
 # A decidedly non-parabolic function with a global min 
 def example_f(x, sc = 2.60,  noise = 0.0010, wave=0.5):
     'Function over the range to minimize in one dim'
@@ -36,6 +39,13 @@ class OneDimOpt:
 
     # =1: some tracing.  =2: more tracing.  Set to zero to only report warnings. 
     DBG_LVL = 1
+
+    # Search modes
+    OK = 0
+    NARROW = 1
+    WIDEN = 2
+    NONCONVEX = 3
+
 
     def __init__(self,
         range_min  = -1, 
@@ -148,37 +158,43 @@ class OneDimOpt:
         if self.quadratic_coeff[2] < 0:
             if self.DBG_LVL > -1:
                 print("WARN: Non-convex fit: ", self.quadratic_coeff[2], file=sys.stderr)
-            return False
+            return self.NONCONVEX
         else:
-            return True
+            return self.OK
 
     def run_to_convergence(self, max_iterations = 20):
         'Assuming min is in search range, iterate to a fixed point'
         def remove_extreme_pt(pts):
             'An extreme point is the largest of either the first or last of the sample'
+            # Remove the first point
             if pts[0][1] > pts[-1][1]:
                 if self.DBG_LVL > -1:
                     print("Removed ", pts[0])
                 del(pts[0])
+                # Reset the interval extent
                 self.active_min = pts[1][0]
                 return pts
+            # Remove the last point
             else:
                 if self.DBG_LVL > -1:
                     print("Removed", pts[-1])
                 del(pts[-1])
+                # Reset the interval extent
                 self.active_max = pts[-2][0]
                 return pts
+                
         # Alternatively remove points outside of the max points to the left and right, to 
         # preserve convexity.
         def remove_beyond_max(pts):
             pass
+        
         not_converged = True
         k = 0
         last_est_min = self.initial_guess
         while k < max_iterations:
             print("\nk = {}".format(k))
             pts = self.eval_fit(self.fit_parabola_to_sample())
-            if not self.check_convex():
+            if self.check_convex() == self.NONCONVEX:
                 print('WARN: Try a different starting sample.')
                 return self.search_grid
                 self.converge_flag = False
@@ -220,6 +236,20 @@ class OneDimOpt:
         print('\tResidual mean abs error: {:.5}'.format(errs))
         return [x_s, y_est]
         
+    def narrow_sample_to_converge(self, target_function = almost_lin, #(lambda x: x*x + x),
+            initial_sample =5):
+        'Successively narrow_sample_to_converge by adding points near the estimated min, and remove points far away.'
+        # Create some widely-spaced starting points, to broaden search over possible local optima. 
+        opt.init_grid()
+        opt.init_pts(initial_sample, f= target_function)
+        est_pts = opt.run_to_convergence()
+        return opt
+
+    def widen_sample(self, max_tries = 6):
+        'If the estimated min falls out of the range, adjust the range. '
+        pass
+
+
 # Utility functions
 
 def plot_search_grid(search_grid, parabola_pts):
@@ -232,25 +262,15 @@ def plot_search_grid(search_grid, parabola_pts):
     p.line(parabola_pts[0], parabola_pts[1], color = 'lightblue')
     show(p)
 
-def narrow_sample_to_converge(target_function = example_f, #(lambda x: x*x + x),
-        range_min = -3,
-        range_max=2,
-        initial_guess = 0.0,
-        initial_sample =5):
-    'Successively narrow_sample_to_converge by adding points near the estimated min, and remove points far away.'
-    # Create some widely-spaced starting points, to broaden search over possible local optima. 
-    opt = OneDimOpt(range_min=range_min, range_max=range_max, initial_guess = initial_guess)
-    opt.init_grid()
-    opt.init_pts(initial_sample, f= target_function)
-    est_pts = opt.run_to_convergence()
-    return opt
 
 ################################################################################
 ### MAIN
 ################################################################################
 if __name__ == "__main__":
 
-    opt = narrow_sample_to_converge(initial_sample= 8)
+
+    opt = OneDimOpt(range_min = 3, range_max= 12, initial_guess = 10.0)
+    opt.narrow_sample_to_converge(initial_sample= 8)
     # if opt.converge_flag:
     plot_search_grid(opt.search_grid, opt.eval_fit(opt.quadratic_coeff))
     sys.exit(0)
