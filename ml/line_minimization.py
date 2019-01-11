@@ -26,7 +26,7 @@ from bokeh.io import output_notebook
 # output_notebook()
 
 # A min outside the search range
-def almost_lin( x, b = 1, a = 0.001, noise = 0.1):
+def almost_lin( x, b = 1, a = 1.01, noise = 0.1):
     return 1 + b*x + a*x*x + noise*np.random.random_sample()
     
 # A decidedly non-parabolic function with a global min 
@@ -268,9 +268,13 @@ def plot_search_grid(search_grid, parabola_pts):
 ################################################################################
 if __name__ == "__main__":
 
+    if len(sys.argv) > 1: # input initial guess on from the cmd line
+        init_start = float(sys.argv[1])
+    else:
+        init_start = 10.0
 
-    opt = OneDimOpt(range_min = 3, range_max= 12, initial_guess = 10.0)
-    opt.narrow_sample_to_converge(initial_sample= 8)
+    opt = OneDimOpt(range_min = 3, range_max= 12, initial_guess = init_start)
+    opt.narrow_sample_to_converge(initial_sample= 8, target_function = almost_lin )
     # if opt.converge_flag:
     plot_search_grid(opt.search_grid, opt.eval_fit(opt.quadratic_coeff))
     sys.exit(0)
