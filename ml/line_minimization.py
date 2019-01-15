@@ -22,17 +22,10 @@ import random
 import numpy as np 
 
 from bokeh.plotting import figure, show
-from bokeh.io import output_notebook
+import bokeh.palettes
+#from bokeh.io import output_notebook
 # output_notebook()
 
-# A min outside the search range
-def almost_lin( x, b = 1, a = 1.01, noise = 0.1):
-    return 1 + b*x + a*x*x + noise*np.random.random_sample()
-    
-# A decidedly non-parabolic function with a global min 
-def example_f(x, sc = 2.60,  noise = 0.0010, wave=0.5):
-    'Function over the range to minimize in one dim'
-    return sc*sc*math.exp((x-1.5)*sc) + sc*sc*math.exp(-(1.9 + x)*sc) + wave* math.sin(4* x) + noise*np.random.random_sample()
 
 class OneDimOpt:
     'Use a quadratic approx to a set of points in one dimension to search for a minimum'
@@ -45,16 +38,29 @@ class OneDimOpt:
     NARROW = 1
     WIDEN = 2
     NONCONVEX = 3
+    CLR_CYCLE = 20
 
 
     def __init__(self,
         range_min  = -1, 
         range_max =  1,
+        bound_min = None,
+        bound_max = None,
         initial_guess = None):
         # Initialization 
         self.range_min = range_min
         self.range_max = range_max
         self.initial_guess = initial_guess
+        # Default will be to set the search bounds wide. Or optionally to the initial range
+        if bound_max is not None:
+            self.bound_max = bound_max
+        else:
+            self.bound_max = sys.float_info.max 
+        if bound_min is not None:
+            self.bound_min = bound_min
+        else:
+            self.bound_min = sys.float_info.min 
+        
         self.epsilon = 1.0e-5
 
 
@@ -65,15 +71,22 @@ class OneDimOpt:
         self.active_max = float(self.range_max)
         # tuples of (x, f(x)), ordered by x.
         self.search_grid = []
+        # Also assign plotting colors to points
+        self.colors_grid = []
+        self.iseq = 0
+        self.spectrum = bokeh.palettes.viridis(self.CLR_CYCLE)  # colors to cycle thru. 
+        self.spectrum.reverse()
         self.y = []
         self.half_range = (self.range_max - self.range_min)/2
 
-    def init_pts(self, no_pts=3, f = example_f):
+    def init_pts(self, no_pts=3, f = (lambda x:1.0 - x + 10.0*x*x + np.random.random_sample()),
+        init_color = 'navajowhite'):
         self.f = f
         grid_x = np.linspace(self.range_min, self.range_max, no_pts)
         self.search_grid = list(zip(grid_x, map(self.f, grid_x)))
         self.x = [z[0] for z in self.search_grid]
         self.y = [z[1] for z in self.search_grid]
+        self.colors_grid = [init_color] * len(self.search_grid)
         if not self.initial_guess:
             # No, we want the x value for the min y. 
             min_at = self.y.index(min(self.y))
@@ -86,16 +99,18 @@ class OneDimOpt:
     def add_f_to_grid(self, x):
         'Add points in sorted order to the sample'
         # Binary search would be better
-        found_k = [k for k in range(len(self.search_grid)) if abs(x-self.search_grid[k][0]) <= self.epsilon * self.half_range]
-        if found_k == []:
+        found_k = bisect.bisect_left(self.x, x)
+        # Check if there's not already a point in search grid at x. 
+        if self.x[found_k] != x:
             new_pt = (x, self.f(x))
             if self.DBG_LVL > 0:
-                print('Adding point at ', new_pt)
-            bisect.insort_left(self.search_grid, new_pt)
+                print('Adding point at ({:.4}, {:.4})', new_pt[0], new_pt[1])
+            self.search_grid.insert(found_k, new_pt)
+            self.x = [z[0] for z in self.search_grid]
             self.y = [z[1] for z in self.search_grid]
-            return new_pt
-        else:
-            return self.search_grid[found_k[0]]
+            self.colors_grid.insert(found_k, self.spectrum[self.iseq % self.CLR_CYCLE])
+            self.iseq += 1
+        return self.search_grid[found_k]
 
     def points_design_matrix(self):
         'The quadratic regression design matrix'
@@ -157,7 +172,7 @@ class OneDimOpt:
         'Is the fit convex?'
         if self.quadratic_coeff[2] < 0:
             if self.DBG_LVL > -1:
-                print("WARN: Non-convex fit: ", self.quadratic_coeff[2], file=sys.stderr)
+                print("WARN: Non-convex fit {:.4}: ", self.quadratic_coeff[2], file=sys.stderr)
             return self.NONCONVEX
         else:
             return self.OK
@@ -169,7 +184,7 @@ class OneDimOpt:
             # Remove the first point
             if pts[0][1] > pts[-1][1]:
                 if self.DBG_LVL > -1:
-                    print("Removed ", pts[0])
+                    print("Removed ({:.4}, {:.4})", pts[0][0], pts[0][1])
                 del(pts[0])
                 # Reset the interval extent
                 self.active_min = pts[1][0]
@@ -177,7 +192,7 @@ class OneDimOpt:
             # Remove the last point
             else:
                 if self.DBG_LVL > -1:
-                    print("Removed", pts[-1])
+                    print("Removed ({:.4}, {:.4})", pts[-1][0], pts[-1][1])
                 del(pts[-1])
                 # Reset the interval extent
                 self.active_max = pts[-2][0]
@@ -236,7 +251,7 @@ class OneDimOpt:
         print('\tResidual mean abs error: {:.5}'.format(errs))
         return [x_s, y_est]
         
-    def narrow_sample_to_converge(self, target_function = almost_lin, #(lambda x: x*x + x),
+    def narrow_sample_to_converge(self, target_function = (lambda x: x*x + x),
             initial_sample =5):
         'Successively narrow_sample_to_converge by adding points near the estimated min, and remove points far away.'
         # Create some widely-spaced starting points, to broaden search over possible local optima. 
@@ -252,16 +267,27 @@ class OneDimOpt:
 
 # Utility functions
 
-def plot_search_grid(search_grid, parabola_pts):
+def plot_search_grid(search_grid, 
+        parabola_pts,
+        colors = 'sandybrown'):
     p = figure(plot_width = 600, plot_height = 600, 
         title = 'Current points',
         x_axis_label = 'x', y_axis_label = 'f(x)')
     pts = list(zip(*search_grid))
-    p.circle(pts[0], pts[1],  color = 'darkred', size=6)
+    p.circle(pts[0], pts[1],  color = colors, size=6)
     # Add a parabola approx.
     p.line(parabola_pts[0], parabola_pts[1], color = 'lightblue')
     show(p)
 
+
+# A min outside the search range
+def almost_lin( x, b = -10, a = 10.01, noise = 5.1):
+    return 1 + b*x + a*x*x + noise*np.random.random_sample()
+    
+# A decidedly non-parabolic function with a global min 
+def example_f(x, sc = 2.60,  noise = 0.0010, wave=0.5):
+    'Function over the range to minimize in one dim'
+    return sc*sc*math.exp((x-1.5)*sc) + sc*sc*math.exp(-(1.9 + x)*sc) + wave* math.sin(4* x) + noise*np.random.random_sample()
 
 ################################################################################
 ### MAIN
@@ -273,10 +299,11 @@ if __name__ == "__main__":
     else:
         init_start = 10.0
 
-    opt = OneDimOpt(range_min = 3, range_max= 12, initial_guess = init_start)
+    opt = OneDimOpt(range_min = 1, range_max= 12, initial_guess = init_start)
     opt.narrow_sample_to_converge(initial_sample= 8, target_function = almost_lin )
     # if opt.converge_flag:
-    plot_search_grid(opt.search_grid, opt.eval_fit(opt.quadratic_coeff))
+    plot_search_grid(opt.search_grid, opt.eval_fit(opt.quadratic_coeff), bokeh.palettes.Viridis11) # opt.colors_grid)
+
     sys.exit(0)
 
     def test1():
