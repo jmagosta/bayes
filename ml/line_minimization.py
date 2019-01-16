@@ -63,7 +63,7 @@ class OneDimOpt:
         else:
             self.bound_min = sys.float_info.min 
         
-        self.epsilon = 1.0e-5
+        self.EPSILON = 1.0e-5
 
 
     def init_grid(self):
@@ -104,8 +104,9 @@ class OneDimOpt:
         'Add points in sorted order to the sample'
         # Binary search would be better
         found_k = bisect.bisect_left(self.x, x)
-        # Check if there's not already a point in search grid at x. 
-        if self.x[found_k] != x:
+        # Check if the point is after the last point or 
+        # if there's not already a point in search grid at x. 
+        if found_k > len(self.x) or self.x[found_k] != x:
             new_pt = (x, self.f(x))
             if self.DBG_LVL > 0:
                 print('Adding point at ({:.4}, {:.4})'.format( new_pt[0], new_pt[1]))
@@ -181,7 +182,7 @@ class OneDimOpt:
         else:
             return self.OK
 
-    def run_to_convergence(self, max_iterations = 50):
+    def run_to_convergence(self, max_iterations):
         'Assuming min is in search range, iterate to a fixed point'
         def remove_extreme_pt(pts):
             'An extreme point is the largest of either the first or last of the sample'
@@ -190,6 +191,7 @@ class OneDimOpt:
                 if self.DBG_LVL > -1:
                     print("Removed ({:.4}, {:.4})".format( pts[0][0], pts[0][1]))
                 del(pts[0])
+                del(self.colors_grid[0])
                 # Reset the interval extent
                 self.active_min = pts[1][0]
                 return pts
@@ -198,12 +200,13 @@ class OneDimOpt:
                 if self.DBG_LVL > -1:
                     print("Removed ({:.4}, {:.4})".format( pts[-1][0], pts[-1][1]))
                 del(pts[-1])
+                del(self.colors_grid[-1])
                 # Reset the interval extent
                 self.active_max = pts[-2][0]
                 return pts
         
         def low_noise():
-            return False
+            return True
                 
         not_converged = True
         k = 0
@@ -215,7 +218,7 @@ class OneDimOpt:
                 print('WARN: Try a different starting sample.')
                 self.converge_flag = False
                 break 
-            if abs(self.est_min - last_est_min) < self.epsilon * self.half_range:
+            if abs(self.est_min - last_est_min) < self.EPSILON * self.half_range:
                 print('Converged at {:.5}'.format(self.est_min))
                 break
             if k >= max_iterations:
@@ -265,13 +268,13 @@ class OneDimOpt:
         self.residuals.append((self.est_min, errs))
         return [x_s, y_est]
         
-    def narrow_sample_to_converge(self, target_function = (lambda x: x*x + x),
+    def narrow_sample_to_converge(self, max_iterations = 10, target_function = (lambda x: x*x + x),
             initial_sample =5):
         'Successively narrow_sample_to_converge by adding points near the estimated min, and remove points far away.'
         # Create some widely-spaced starting points, to broaden search over possible local optima. 
         self.init_grid()
         self.init_pts(initial_sample, f= target_function)
-        self.run_to_convergence()
+        self.run_to_convergence(max_iterations = max_iterations )
         return self
 
     def widen_sample(self, max_tries = 6):
@@ -343,7 +346,7 @@ if __name__ == "__main__":
         init_start = 10.0
 
     opt = OneDimOpt(range_min = -1, range_max= 1, initial_guess = init_start)
-    opt.narrow_sample_to_converge(initial_sample= 11, target_function = v_func)
+    opt.narrow_sample_to_converge(initial_sample= 11,  max_iterations = 4, target_function = v_func)
     # if opt.converge_flag:
 
     sg = plot_search_grid(opt.search_grid, opt.eval_fit(opt.quadratic_coeff), opt.colors_grid) #bokeh.palettes.Viridis11) # opt.colors_grid)
