@@ -22,6 +22,8 @@ import random
 import numpy as np 
 
 from bokeh.plotting import figure, show
+from bokeh.layouts import column
+from bokeh.models import Arrow, NormalHead
 import bokeh.palettes
 #from bokeh.io import output_notebook
 # output_notebook()
@@ -71,6 +73,8 @@ class OneDimOpt:
         self.active_max = float(self.range_max)
         # tuples of (x, f(x)), ordered by x.
         self.search_grid = []
+        # tuples of current estimate & residual avg error, 
+        self.residuals = []
         # Also assign plotting colors to points
         self.colors_grid = []
         self.iseq = 0
@@ -104,7 +108,7 @@ class OneDimOpt:
         if self.x[found_k] != x:
             new_pt = (x, self.f(x))
             if self.DBG_LVL > 0:
-                print('Adding point at ({:.4}, {:.4})', new_pt[0], new_pt[1])
+                print('Adding point at ({:.4}, {:.4})'.format( new_pt[0], new_pt[1]))
             self.search_grid.insert(found_k, new_pt)
             self.x = [z[0] for z in self.search_grid]
             self.y = [z[1] for z in self.search_grid]
@@ -177,14 +181,14 @@ class OneDimOpt:
         else:
             return self.OK
 
-    def run_to_convergence(self, max_iterations = 20):
+    def run_to_convergence(self, max_iterations = 50):
         'Assuming min is in search range, iterate to a fixed point'
         def remove_extreme_pt(pts):
             'An extreme point is the largest of either the first or last of the sample'
             # Remove the first point
             if pts[0][1] > pts[-1][1]:
                 if self.DBG_LVL > -1:
-                    print("Removed ({:.4}, {:.4})", pts[0][0], pts[0][1])
+                    print("Removed ({:.4}, {:.4})".format( pts[0][0], pts[0][1]))
                 del(pts[0])
                 # Reset the interval extent
                 self.active_min = pts[1][0]
@@ -192,42 +196,49 @@ class OneDimOpt:
             # Remove the last point
             else:
                 if self.DBG_LVL > -1:
-                    print("Removed ({:.4}, {:.4})", pts[-1][0], pts[-1][1])
+                    print("Removed ({:.4}, {:.4})".format( pts[-1][0], pts[-1][1]))
                 del(pts[-1])
                 # Reset the interval extent
                 self.active_max = pts[-2][0]
                 return pts
-                
-        # Alternatively remove points outside of the max points to the left and right, to 
-        # preserve convexity.
-        def remove_beyond_max(pts):
-            pass
         
+        def low_noise():
+            return False
+                
         not_converged = True
         k = 0
         last_est_min = self.initial_guess
-        while k < max_iterations:
+        while True:
             print("\nk = {}".format(k))
             pts = self.eval_fit(self.fit_parabola_to_sample())
             if self.check_convex() == self.NONCONVEX:
                 print('WARN: Try a different starting sample.')
-                return self.search_grid
                 self.converge_flag = False
+                break 
             if abs(self.est_min - last_est_min) < self.epsilon * self.half_range:
                 print('Converged at {:.5}'.format(self.est_min))
-                return self.search_grid
+                break
+            if k >= max_iterations:
+                break
             ### Add a point that straddles the est min, within the active interval
             #   Using the current min as the new point, biases the converged value
             #   to the current estimate, so this sampling approach avoids this
             #   while still narrowing the sample estimates toward convergence. 
             #   (Might be worth checking that the current estimate stays in the 
             #    active interval.)
+            # TODO here's where to check if self.est_min is outside the active interval,
+            # and decide how to expand it. 
             if self.DBG_LVL > 0:
                 print("\tActive interval: [{:.4}, {:.4}]".format (self.active_min, self.active_max))
+
+            # TODO - need a better way to pick points in the interval. e.g SOBOL randomization,
+            # assuming a deterministic function
+
             active_x = random.uniform(self.active_min, self.active_max)
             self.add_f_to_grid(active_x)
-            # and remove an extreme point. 
-            self.search_grid = remove_extreme_pt(self.search_grid)
+            # and remove an extreme point. But, only if the noise is low.
+            if low_noise():
+                self.search_grid = remove_extreme_pt(self.search_grid)
             self.y = [z[1] for z in self.search_grid]
             last_est_min = self.est_min
             k += 1
@@ -242,50 +253,82 @@ class OneDimOpt:
         x_s = [z[0] for z in pts]
         y_s = [z[1] for z in pts]
         y_est = [a * x * x + b * x + c for x in x_s]
-        # Compute estimated minimum
-        if a != 0:
-            self.est_min = -0.5*b/a
-            print('\tEstimated min at: {:.4}/2*{:.4} = {:.4}'.format(-b, a, self.est_min))
         # List the absolute value (L1) errors for the fit.
         errs = sum([abs(pt[1] - pt[0]) for pt in zip(y_est, y_s)])/len(y_s)
         print('\tResidual mean abs error: {:.5}'.format(errs))
+        if a != 0:
+            # Compute estimated minimum
+            self.est_min = -0.5*b/a
+        else:
+            self.est_min = math.nan
+        print('\tEstimated min at: {:.4}/2*{:.4} = {:.4}'.format(-b, a, self.est_min))
+        self.residuals.append((self.est_min, errs))
         return [x_s, y_est]
         
     def narrow_sample_to_converge(self, target_function = (lambda x: x*x + x),
             initial_sample =5):
         'Successively narrow_sample_to_converge by adding points near the estimated min, and remove points far away.'
         # Create some widely-spaced starting points, to broaden search over possible local optima. 
-        opt.init_grid()
-        opt.init_pts(initial_sample, f= target_function)
-        est_pts = opt.run_to_convergence()
-        return opt
+        self.init_grid()
+        self.init_pts(initial_sample, f= target_function)
+        self.run_to_convergence()
+        return self
 
     def widen_sample(self, max_tries = 6):
         'If the estimated min falls out of the range, adjust the range. '
         pass
 
-
+##################################################################################################
 # Utility functions
 
 def plot_search_grid(search_grid, 
         parabola_pts,
-        colors = 'sandybrown'):
+        colors = None):
     p = figure(plot_width = 600, plot_height = 600, 
         title = 'Current points',
         x_axis_label = 'x', y_axis_label = 'f(x)')
     pts = list(zip(*search_grid))
-    p.circle(pts[0], pts[1],  color = colors, size=6)
+    if colors:
+
+        p.circle(pts[0], pts[1],  color = colors, size=6)
+    else:
+
+        p.circle(pts[0], pts[1],  color = colors, size=6)
     # Add a parabola approx.
     p.line(parabola_pts[0], parabola_pts[1], color = 'lightblue')
-    show(p)
+    return p
+    #show(p)
 
+def plot_residuals(residuals):
+    p = figure(plot_width = 600, plot_height = 600, 
+        title = 'Convergence Path',
+        x_axis_label = 'x-est', y_axis_label = 'mean abs residual')
+    pts = list(zip(*residuals))
+    p.circle(pts[0], pts[1],  color = 'crimson', size=10)
+    tail_pt  = residuals[0]
+    for a_pt in residuals[1:]:
+        p.add_layout(Arrow(end=NormalHead(size=8, fill_color ='lightcoral'), line_color='lightcoral',
+        x_start = tail_pt[0], y_start = tail_pt[1], x_end = a_pt[0], y_end = a_pt[1]))
+        tail_pt = a_pt
+    return p
+    #show(p)
+
+def v_func(x, lft =10, rht =4):
+    min_pt = 1
+    kcenter = 0
+    if abs(x - kcenter) < 1e-4:
+        return min_pt
+    if x < kcenter:
+        return -lft * x + 1
+    if x > kcenter:
+        return rht * x + 1
 
 # A min outside the search range
-def almost_lin( x, b = -10, a = 10.01, noise = 5.1):
+def almost_lin( x, b = -10, a = 3.01, noise =3.0):
     return 1 + b*x + a*x*x + noise*np.random.random_sample()
     
 # A decidedly non-parabolic function with a global min 
-def example_f(x, sc = 2.60,  noise = 0.0010, wave=0.5):
+def example_f(x, sc = 2.60,  noise = 0.0010, wave=0.6):
     'Function over the range to minimize in one dim'
     return sc*sc*math.exp((x-1.5)*sc) + sc*sc*math.exp(-(1.9 + x)*sc) + wave* math.sin(4* x) + noise*np.random.random_sample()
 
@@ -299,10 +342,13 @@ if __name__ == "__main__":
     else:
         init_start = 10.0
 
-    opt = OneDimOpt(range_min = 1, range_max= 12, initial_guess = init_start)
-    opt.narrow_sample_to_converge(initial_sample= 8, target_function = almost_lin )
+    opt = OneDimOpt(range_min = -1, range_max= 1, initial_guess = init_start)
+    opt.narrow_sample_to_converge(initial_sample= 11, target_function = v_func)
     # if opt.converge_flag:
-    plot_search_grid(opt.search_grid, opt.eval_fit(opt.quadratic_coeff), bokeh.palettes.Viridis11) # opt.colors_grid)
+
+    sg = plot_search_grid(opt.search_grid, opt.eval_fit(opt.quadratic_coeff), opt.colors_grid) #bokeh.palettes.Viridis11) # opt.colors_grid)
+    rs = plot_residuals(opt.residuals)  
+    show(column(sg, rs))
 
     sys.exit(0)
 
