@@ -103,7 +103,7 @@ class OneDimOpt:
     def add_f_to_grid(self, x):
         'Add points in sorted order to the sample'
         # Binary search would be better
-        found_k = bisect.bisect_left(self.x, x)
+        found_k = bisect.bisect_left([z[0] for z in self.search_grid],x)
         # Check if the point is after the last point or 
         # if there's not already a point in search grid at x. 
         if found_k > len(self.x) or self.x[found_k] != x:
@@ -346,7 +346,7 @@ if __name__ == "__main__":
         init_start = 10.0
 
     opt = OneDimOpt(range_min = -1, range_max= 1, initial_guess = init_start)
-    opt.narrow_sample_to_converge(initial_sample= 11,  max_iterations = 4, target_function = v_func)
+    opt.narrow_sample_to_converge(initial_sample= 11,  max_iterations = 40, target_function = v_func)
     # if opt.converge_flag:
 
     sg = plot_search_grid(opt.search_grid, opt.eval_fit(opt.quadratic_coeff), opt.colors_grid) #bokeh.palettes.Viridis11) # opt.colors_grid)
