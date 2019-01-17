@@ -61,7 +61,7 @@ class OneDimOpt:
         if bound_min is not None:
             self.bound_min = bound_min
         else:
-            self.bound_min = sys.float_info.min 
+            self.bound_min = -sys.float_info.max 
         
         self.EPSILON = 1.0e-5
 
@@ -103,10 +103,11 @@ class OneDimOpt:
     def add_f_to_grid(self, x):
         'Add points in sorted order to the sample'
         # Binary search would be better
-        found_k = bisect.bisect_left([z[0] for z in self.search_grid],x)
-        # Check if the point is after the last point or 
+        self.x = [z[0] for z in self.search_grid]
+        found_k = bisect.bisect_left(self.x, x)
+        # Check if the point goes just after the last point or 
         # if there's not already a point in search grid at x. 
-        if found_k > len(self.x) or self.x[found_k] != x:
+        if (found_k == len(self.x)) or (self.x[found_k] != x):
             new_pt = (x, self.f(x))
             if self.DBG_LVL > 0:
                 print('Adding point at ({:.4}, {:.4})'.format( new_pt[0], new_pt[1]))
@@ -115,7 +116,7 @@ class OneDimOpt:
             self.y = [z[1] for z in self.search_grid]
             self.colors_grid.insert(found_k, self.spectrum[self.iseq % self.CLR_CYCLE])
             self.iseq += 1
-        return self.search_grid[found_k]
+        return self.search_grid
 
     def points_design_matrix(self):
         'The quadratic regression design matrix'
@@ -175,9 +176,11 @@ class OneDimOpt:
 
     def check_convex(self):
         'Is the fit convex?'
-        if self.quadratic_coeff[2] < 0:
+        #TODO -if the points check out to be linear, this corner case should not 
+        #drive the estimated x to -+ inf. 
+        if self.quadratic_coeff[2] < -self.EPSILON:
             if self.DBG_LVL > -1:
-                print("WARN: Non-convex fit {:.4}: ", self.quadratic_coeff[2], file=sys.stderr)
+                print("WARN: Non-convex fit {:.4}: ".format( self.quadratic_coeff[2]), file=sys.stderr)
             return self.NONCONVEX
         else:
             return self.OK
@@ -229,11 +232,11 @@ class OneDimOpt:
             #   while still narrowing the sample estimates toward convergence. 
             #   (Might be worth checking that the current estimate stays in the 
             #    active interval.)
-            # TODO here's where to check if self.est_min is outside the active interval,
+            # Check if self.est_min is outside the active interval,
             # and decide how to expand it. 
+            self.active_min, self.active_max = self.widen_sample()
             if self.DBG_LVL > 0:
                 print("\tActive interval: [{:.4}, {:.4}]".format (self.active_min, self.active_max))
-
             # TODO - need a better way to pick points in the interval. e.g SOBOL randomization,
             # assuming a deterministic function
 
@@ -248,7 +251,7 @@ class OneDimOpt:
         return self.search_grid
 
     def eval_fit(self, coeffs):
-        'Compute the fitted values for the parabola fit'
+        'Compute the fitted values for the parabola fit, and return those points for current x values.'
         pts = self.search_grid
         c = coeffs[0]
         b = coeffs[1]
@@ -278,8 +281,17 @@ class OneDimOpt:
         return self
 
     def widen_sample(self, max_tries = 6):
-        'If the estimated min falls out of the range, adjust the range. '
-        pass
+        'If the estimated min falls out of the range, adjust the range by doubling it to that side.'
+        if not np.isnan(self.est_min):
+            if self.est_min < self.active_min:
+                self.active_min = max(2 * self.active_min - self.active_max, self.bound_min)
+                if self.DBG_LVL > 0:
+                    print("\tMin reduced to: ", self.active_min)
+            if self.est_min > self.active_max:
+                self.active_max = min(2 * self.active_max - self.active_min, self.bound_max)
+                if self.DBG_LVL > 0:                
+                    print ("\tMax increased to:", self.active_max)
+        return self.active_min, self.active_max 
 
 ##################################################################################################
 # Utility functions
@@ -316,18 +328,20 @@ def plot_residuals(residuals):
     return p
     #show(p)
 
-def v_func(x, lft =10, rht =4):
+def v_func(x, lft =10, rht =4, noise = 0.0):
     min_pt = 1
     kcenter = 0
+    fx = noise*np.random.random_sample()
     if abs(x - kcenter) < 1e-4:
-        return min_pt
+        fx += min_pt
     if x < kcenter:
-        return -lft * x + 1
+        fx += -lft * x + 1
     if x > kcenter:
-        return rht * x + 1
+        fx += rht * x + 1
+    return fx 
 
 # A min outside the search range
-def almost_lin( x, b = -10, a = 3.01, noise =3.0):
+def almost_lin( x, b = 0, a = 3.01, noise =0.1):
     return 1 + b*x + a*x*x + noise*np.random.random_sample()
     
 # A decidedly non-parabolic function with a global min 
@@ -345,8 +359,8 @@ if __name__ == "__main__":
     else:
         init_start = 10.0
 
-    opt = OneDimOpt(range_min = -1, range_max= 1, initial_guess = init_start)
-    opt.narrow_sample_to_converge(initial_sample= 11,  max_iterations = 40, target_function = v_func)
+    opt = OneDimOpt(range_min = -5, range_max= -4, initial_guess = init_start)
+    opt.narrow_sample_to_converge(initial_sample= 11,  max_iterations = 10, target_function = almost_lin)
     # if opt.converge_flag:
 
     sg = plot_search_grid(opt.search_grid, opt.eval_fit(opt.quadratic_coeff), opt.colors_grid) #bokeh.palettes.Viridis11) # opt.colors_grid)
