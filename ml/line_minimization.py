@@ -67,7 +67,7 @@ class OneDimOpt:
 
 
     def init_grid(self):
-        ''
+        'Create an empty sample. '
         self.converge_flag = True
         self.active_min = float(self.range_min)
         self.active_max = float(self.range_max)
@@ -85,6 +85,7 @@ class OneDimOpt:
 
     def init_pts(self, no_pts=3, f = (lambda x:1.0 - x + 10.0*x*x + np.random.random_sample()),
         init_color = 'navajowhite'):
+        'Add initial points to the sample.'
         self.f = f
         grid_x = np.linspace(self.range_min, self.range_max, no_pts)
         self.search_grid = list(zip(grid_x, map(self.f, grid_x)))
@@ -102,7 +103,6 @@ class OneDimOpt:
 
     def add_f_to_grid(self, x):
         'Add points in sorted order to the sample'
-        # Binary search would be better
         self.x = [z[0] for z in self.search_grid]
         found_k = bisect.bisect_left(self.x, x)
         # Check if the point goes just after the last point or 
@@ -138,10 +138,13 @@ class OneDimOpt:
         if OneDimOpt.DBG_LVL > 1:
             print('Design matrix:\n', X)
         # The fit to the search grid points
-        # For outputs, see https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.linalg.lstsq.html
-        parabola_fit = np.linalg.lstsq(X,self.y, rcond=-1)
-        # Return the coefficients (c, b a)
-        self.quadratic_coeff = parabola_fit[0]
+        try:
+            # For outputs, see https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.linalg.lstsq.html
+            parabola_coef, resid, rank, svalues = np.linalg.lstsq(X,self.y, rcond=-1)
+            # Return the coefficients (c, b, a)
+            self.quadratic_coeff = parabola_coef
+        except np.LinAlgError as the_err:
+            print("WARN: Quadratic fit did not converge {}".format(the_err), file = sys.stderr)
         return self.quadratic_coeff
 
     def fit_line_to_sample(self):
@@ -271,7 +274,7 @@ class OneDimOpt:
         self.residuals.append((self.est_min, errs))
         return [x_s, y_est]
         
-    def narrow_sample_to_converge(self, max_iterations = 10, target_function = (lambda x: x*x + x),
+    def search_for_min(self, max_iterations = 10, target_function = (lambda x: x*x + x),
             initial_sample =5):
         'Successively narrow_sample_to_converge by adding points near the estimated min, and remove points far away.'
         # Create some widely-spaced starting points, to broaden search over possible local optima. 
@@ -360,7 +363,7 @@ if __name__ == "__main__":
         init_start = 10.0
 
     opt = OneDimOpt(range_min = -5, range_max= -4, initial_guess = init_start)
-    opt.narrow_sample_to_converge(initial_sample= 11,  max_iterations = 10, target_function = almost_lin)
+    opt.search_for_min(initial_sample= 11,  max_iterations = 10, target_function = almost_lin)
     # if opt.converge_flag:
 
     sg = plot_search_grid(opt.search_grid, opt.eval_fit(opt.quadratic_coeff), opt.colors_grid) #bokeh.palettes.Viridis11) # opt.colors_grid)
