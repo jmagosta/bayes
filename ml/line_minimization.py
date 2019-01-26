@@ -20,6 +20,7 @@ import bisect
 import pprint
 import random
 import numpy as np 
+import scipy.stats as ss      # scipy.stats.t distribution, e.g. t.cdf
 
 from bokeh.plotting import figure, show
 from bokeh.layouts import column
@@ -141,6 +142,9 @@ class OneDimOpt:
         try:
             # For outputs, see https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.linalg.lstsq.html
             parabola_coef, resid, rank, svalues = np.linalg.lstsq(X,self.y, rcond=-1)
+            # resid is the sum of residuals^2
+            # To get the Residual Standard Error note the design matrix has 3 degrees of freedom
+            RSE = math.sqrt(resid/(len(self.y) -3))
             # Return the coefficients (c, b, a)
             self.quadratic_coeff = parabola_coef
         except np.LinAlgError as the_err:
@@ -344,7 +348,7 @@ def v_func(x, lft =10, rht =4, noise = 0.0):
     return fx 
 
 # A min outside the search range
-def almost_lin( x, b = 0, a = 3.01, noise =0.1):
+def almost_lin( x, b = 0, a = 3.01, noise 0.9):
     return 1 + b*x + a*x*x + noise*np.random.random_sample()
     
 # A decidedly non-parabolic function with a global min 
