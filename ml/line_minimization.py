@@ -25,7 +25,7 @@ import scipy.stats as ss      # scipy.stats.t distribution, e.g. t.cdf
 from bokeh.plotting import figure, show
 from bokeh.layouts import column
 from bokeh.models import Arrow, NormalHead
-import bokeh.palettes
+from bokeh.palettes import viridis
 #from bokeh.io import output_notebook
 # output_notebook()
 
@@ -40,7 +40,10 @@ class OneDimOpt:
     OK = 0
     NARROW = 1
     WIDEN = 2
-    NONCONVEX = 3
+    CONVEX = 3
+    CONCAVE = 4       # convex up
+    LEFTWARD = 5      # lower to the left (pos slope)
+    RIGHTWARD = 6     # lower to the right (neg slope)
     CLR_CYCLE = 20
 
 
@@ -48,12 +51,10 @@ class OneDimOpt:
         range_min  = -1, 
         range_max =  1,
         bound_min = None,
-        bound_max = None,
-        initial_guess = None):
+        bound_max = None):
         # Initialization 
         self.range_min = range_min
         self.range_max = range_max
-        self.initial_guess = initial_guess
         # Default will be to set the search bounds wide. Or optionally to the initial range
         if bound_max is not None:
             self.bound_max = bound_max
@@ -79,7 +80,7 @@ class OneDimOpt:
         # Also assign plotting colors to points
         self.colors_grid = []
         self.iseq = 0
-        self.spectrum = bokeh.palettes.viridis(self.CLR_CYCLE)  # colors to cycle thru. 
+        self.spectrum = viridis(self.CLR_CYCLE)  # colors to cycle thru. 
         self.spectrum.reverse()
         self.y = []
         self.half_range = (self.range_max - self.range_min)/2
@@ -93,10 +94,9 @@ class OneDimOpt:
         self.x = [z[0] for z in self.search_grid]
         self.y = [z[1] for z in self.search_grid]
         self.colors_grid = [init_color] * len(self.search_grid)
-        if not self.initial_guess:
-            # No, we want the x value for the min y. 
-            min_at = self.y.index(min(self.y))
-            self.initial_guess =  self.x[min_at]
+        # We want the x value for the min y in the initial sample
+        min_at = self.y.index(min(self.y))
+        self.initial_guess =  self.x[min_at]
         if self.DBG_LVL > 0:
             print("Initial points:")
             pprint.pprint(self.search_grid)
@@ -133,62 +133,43 @@ class OneDimOpt:
             dm = np.vstack((dm, np.array(dm_sample(row), dtype='float')))
         return dm
 
-    def fit_parabola_to_sample(self):
-        'Use conventional least squares to fit to the design matrix.'
+    def fit_parabola_to_sample(self, test_size = 1):
+        'Use conventional least squares to fit to the design matrix. test_size determines p-value'
         X = self.points_design_matrix()
-        if OneDimOpt.DBG_LVL > 1:
-            print('Design matrix:\n', X)
+        fit = {}
         # The fit to the search grid points
-        try:
+        #try:
             # For outputs, see https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.linalg.lstsq.html
-            parabola_coef, resid, rank, svalues = np.linalg.lstsq(X,self.y, rcond=-1)
-            # resid is the sum of residuals^2
-            # To get the Residual Standard Error note the design matrix has 3 degrees of freedom
-            RSE = math.sqrt(resid/(len(self.y) -3))
-            # Return the coefficients (c, b, a)
-            self.quadratic_coeff = parabola_coef
-        except np.LinAlgError as the_err:
-            print("WARN: Quadratic fit did not converge {}".format(the_err), file = sys.stderr)
-        return self.quadratic_coeff
+        parabola_coef, resid, rank,_ = np.linalg.lstsq(X,self.y, rcond=-1)
+        fit["COEFFICIENTS"] = parabola_coef
+        fit['RESIDUALS'] = resid
+        fit['RANK'] = rank
+        # resid is the sum of residuals^2
+        # To get the Residual Standard Error. Note the design matrix has 3 degrees of freedom
+        fit['RESID_VAR'] = float(resid)/(len(self.y) -3)
+        fit['STD_ERR']= self.confidence_bounds(X, test_size * fit['RESID_VAR'])
+        #except:
+        #    print("WARN: Quadratic fit did not converge {:.5}".format(0.0), file = sys.stderr)
+        return fit
 
-    def fit_line_to_sample(self):
-        'Use conventional least squares to fit to the design matrix.'
-        X = self.points_design_matrix()
-        X = X[:, (0,1)]
-        if OneDimOpt.DBG_LVL > 1:
-            print('Design matrix:\n', X)
-        # The fit to the search grid points
-        linear_fit = np.linalg.lstsq(X,self.y, rcond=-1)
-        # Return the coefficients (c, b a)
-        self.linear_coeff = (linear_fit[0][0], linear_fit[0][1], 0)
-        return self.linear_coeff
 
-    # When the parabola fails, a linear or constant fit may show, by fitting better. 
-    def fit_constant(self):
-        # y = [z[1] for z in self.search_grid]
-        if len(self.y) == 0:
-            print("No samples found.", file=sys.stderr )
-        y_est = np.mean(self.y)
-        self.constant_coeff = (y_est, 0, 0)
-        return self.constant_coeff
+    def confidence_bounds(self, X, confidence_factor = 1.0):
+        'For testing if a min exists, or is out of bounds using fit standard errors.'
+        inv_mat_diag = np.diag(np.linalg.inv(np.matmul(np.transpose(X),X)))
+        inv_mat_diag = [confidence_factor*z for z in inv_mat_diag]
+        if self.DBG_LVL > 0:
+            print('Std err a: {:.4}, b: {:.4}, c:{:.4}'.format(*inv_mat_diag))
+        return inv_mat_diag
 
-    # Search and convergence
-    def check_imbalance(self):
-        'Is one parabola side much higher than the other?'
-        pass
 
-    def check_inconsistent_slope(self):
-        'Is the linear fit divergent from the quadratic?'
-        pass
-
-    def check_convex(self):
-        'Is the fit convex?'
+    def check_fit(self, fit):
+        'Is the fit convex? Is one parabola side much higher than the other?'
         #TODO -if the points check out to be linear, this corner case should not 
         #drive the estimated x to -+ inf. 
-        if self.quadratic_coeff[2] < -self.EPSILON:
+        if fit['COEFFICIENTS'][2] < fit['STD_ERR'][2]:
             if self.DBG_LVL > -1:
-                print("WARN: Non-convex fit {:.4}: ".format( self.quadratic_coeff[2]), file=sys.stderr)
-            return self.NONCONVEX
+                print("WARN: Non-convex fit {:.4}: ".format(fit['COEFFICENTS'][2]), file=sys.stderr)
+            return self.CONCAVE
         else:
             return self.OK
 
@@ -216,25 +197,28 @@ class OneDimOpt:
                 return pts
         
         def low_noise():
-            return True
+            return False
                 
         not_converged = True
         k = 0
         last_est_min = self.initial_guess
-        while True:
+        while not_converged:
             print("\nk = {}".format(k))
-            pts = self.eval_fit(self.fit_parabola_to_sample())
-            if self.check_convex() == self.NONCONVEX:
+            fit = self.fit_parabola_to_sample()
+            self.eval_fit(fit['COEFFICIENTS'])
+            check= self.check_fit(fit) 
+            if check == self.CONCAVE:
                 print('WARN: Try a different starting sample.')
                 self.converge_flag = False
                 break 
+            # Has the search converged?
             if abs(self.est_min - last_est_min) < self.EPSILON * self.half_range:
                 print('Converged at {:.5}'.format(self.est_min))
                 break
             if k >= max_iterations:
                 break
             ### Add a point that straddles the est min, within the active interval
-            #   Using the current min as the new point, biases the converged value
+            #   Just using the current min as the new point, biases the converged value
             #   to the current estimate, so this sampling approach avoids this
             #   while still narrowing the sample estimates toward convergence. 
             #   (Might be worth checking that the current estimate stays in the 
@@ -246,11 +230,11 @@ class OneDimOpt:
                 print("\tActive interval: [{:.4}, {:.4}]".format (self.active_min, self.active_max))
             # TODO - need a better way to pick points in the interval. e.g SOBOL randomization,
             # assuming a deterministic function
-
             active_x = random.uniform(self.active_min, self.active_max)
             self.add_f_to_grid(active_x)
             # and remove an extreme point. But, only if the noise is low.
             if low_noise():
+            # Successively narrow_sample_to_converge by removing eoints far away.'
                 self.search_grid = remove_extreme_pt(self.search_grid)
             self.y = [z[1] for z in self.search_grid]
             last_est_min = self.est_min
@@ -258,7 +242,7 @@ class OneDimOpt:
         return self.search_grid
 
     def eval_fit(self, coeffs):
-        'Compute the fitted values for the parabola fit, and return those points for current x values.'
+        'Compute the fitted values for the parabola fit, along with errors and est min.'
         pts = self.search_grid
         c = coeffs[0]
         b = coeffs[1]
@@ -276,15 +260,7 @@ class OneDimOpt:
             self.est_min = math.nan
         print('\tEstimated min at: {:.4}/2*{:.4} = {:.4}'.format(-b, a, self.est_min))
         self.residuals.append((self.est_min, errs))
-        return [x_s, y_est]
-        
-    def search_for_min(self, max_iterations = 10, target_function = (lambda x: x*x + x),
-            initial_sample =5):
-        'Successively narrow_sample_to_converge by adding points near the estimated min, and remove points far away.'
-        # Create some widely-spaced starting points, to broaden search over possible local optima. 
-        self.init_grid()
-        self.init_pts(initial_sample, f= target_function)
-        self.run_to_convergence(max_iterations = max_iterations )
+        self.est_pts = [x_s, y_est]
         return self
 
     def widen_sample(self, max_tries = 6):
@@ -299,6 +275,15 @@ class OneDimOpt:
                 if self.DBG_LVL > 0:                
                     print ("\tMax increased to:", self.active_max)
         return self.active_min, self.active_max 
+
+        
+    def search_for_min(self, max_iterations = 10, target_function = (lambda x: x*x + x),
+            initial_sample =5):
+        # Create some widely-spaced starting points, to broaden search over possible local optima. 
+        self.init_grid()
+        self.init_pts(initial_sample, f= target_function)
+        self.run_to_convergence(max_iterations = max_iterations )
+        return self
 
 ##################################################################################################
 # Utility functions
@@ -348,7 +333,7 @@ def v_func(x, lft =10, rht =4, noise = 0.0):
     return fx 
 
 # A min outside the search range
-def almost_lin( x, b = 0, a = 3.01, noise 0.9):
+def almost_lin( x, b = 0, a = 3.01, noise = 4.0):
     return 1 + b*x + a*x*x + noise*np.random.random_sample()
     
 # A decidedly non-parabolic function with a global min 
@@ -366,56 +351,12 @@ if __name__ == "__main__":
     else:
         init_start = 10.0
 
-    opt = OneDimOpt(range_min = -5, range_max= -4, initial_guess = init_start)
+    opt = OneDimOpt(range_min = -1, range_max= 1)
     opt.search_for_min(initial_sample= 11,  max_iterations = 10, target_function = almost_lin)
-    # if opt.converge_flag:
 
-    sg = plot_search_grid(opt.search_grid, opt.eval_fit(opt.quadratic_coeff), opt.colors_grid) #bokeh.palettes.Viridis11) # opt.colors_grid)
+    sg = plot_search_grid(opt.search_grid, opt.est_pts, opt.colors_grid) #bokeh.palettes.Viridis11) # opt.colors_grid)
     rs = plot_residuals(opt.residuals)  
     show(column(sg, rs))
 
-    sys.exit(0)
 
-    def test1():
-        opt = OneDimOpt(range_min = -8, range_max=8)
-        # Create some widely-spaced starting points, to broaden search over possible local optima. 
-        opt.init_grid()
-        opt.init_pts(40)
-        # Note that accuracy will improve if points distant from the estimated optimum are pruned 
-        #as more nearby points are added. 
-        if OneDimOpt.DBG_LVL > 0:
-            print(opt.search_grid)
-        est_pts = opt.run_to_convergence()
-
-
-    def test2():
-        # This is how to create more points
-        for pt in np.linspace(0.25+ opt.range_min, opt.range_max, 1):
-            opt.add_f_to_grid(pt)
-        # Return the coefficients of a quadratic regression
-        parabolic_fit = opt.fit_parabola_to_sample()
-        print('Regression coefficients: {}'.format(parabolic_fit))
-        # Evaluate the fit at the sample points
-        print('>> Parabolic ', end='')
-        est_quadratic_pts = opt.eval_fit( parabolic_fit)
-
-        # Also run a linear regression, and compare errors. 
-        linear_fit = opt.fit_line_to_sample()
-        print('Regression coefficients: {}'.format(linear_fit))
-        # Evaluate the fit at the sample points
-        print('>> Linear ', end='')
-        est_linear_pts = opt.eval_fit(linear_fit)
-
-        # OK also try a constant regression
-        coeff_const = opt.fit_constant()
-        print('Regression coefficients: {}'.format(coeff_const))
-        print('>> Constant ', end='')
-        # Evaluate the fit at the sample points
-        est_const_pts = opt.eval_fit(coeff_const)
-
-        # Show both the search points and the best  fit
-        plot_search_grid(opt.search_grid, est_linear_pts)
-
-        # Show both the search points and the best parabolic fit
-        plot_search_grid(opt.search_grid, est_quadratic_pts)
-
+ 
