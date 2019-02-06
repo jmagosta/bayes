@@ -168,10 +168,24 @@ class OneDimOpt:
         #drive the estimated x to -+ inf. 
         if fit['COEFFICIENTS'][2] < fit['STD_ERR'][2]:
             if self.DBG_LVL > -1:
-                print("WARN: Non-convex fit {:.4}: ".format(fit['COEFFICENTS'][2]), file=sys.stderr)
-            return self.CONCAVE
+                 print("WARN: Non-convex fit {:.4}: ".format(fit['COEFFICIENTS'][2]), file=sys.stderr)
         else:
             return self.OK
+
+    def chose_search(self, fit):
+        'Depending on the fit, either expand, narrow or just increase the sample'
+        # If min lies outside current range, expand to that side.
+        if abs(fit['COEFFICIENTS'][1]) > fit['STD_ERR'][1]: # The slope is significant either way        
+            self.active_min, self.active_max = self.widen_sample()
+            if self.DBG_LVL > -1:
+                 print("Significant slope: {:.4}: ".format(fit['COEFFICIENTS'][1]), file=sys.stderr)
+        # If not convex and not sloped, expand in both directions.
+        # But, fail if expansion doens't help 
+        
+         # If high noise, add sample biased toward extremes
+
+        # If ? V fit, narrow around est min
+
 
     def run_to_convergence(self, max_iterations):
         'Assuming min is in search range, iterate to a fixed point'
@@ -225,7 +239,7 @@ class OneDimOpt:
             #    active interval.)
             # Check if self.est_min is outside the active interval,
             # and decide how to expand it. 
-            self.active_min, self.active_max = self.widen_sample()
+            self.chose_search(fit)
             if self.DBG_LVL > 0:
                 print("\tActive interval: [{:.4}, {:.4}]".format (self.active_min, self.active_max))
             # TODO - need a better way to pick points in the interval. e.g SOBOL randomization,
