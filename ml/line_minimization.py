@@ -31,7 +31,7 @@ from bokeh.palettes import viridis
 
 
 class OneDimOpt:
-    'Use a quadratic approx to a set of points in one dimension to search for a minimum'
+    'Use a quadratic approx to a set of points in one dimension to search for a minimum.'
 
     # =1: some tracing.  =2: more tracing.  Set to zero to only report warnings. 
     DBG_LVL = 1
@@ -50,6 +50,7 @@ class OneDimOpt:
     def __init__(self,
         range_min  = -1, 
         range_max =  1,
+        epsilon = 1.0E-5,
         bound_min = None,
         bound_max = None):
         # Initialization 
@@ -65,12 +66,13 @@ class OneDimOpt:
         else:
             self.bound_min = -sys.float_info.max 
         
-        self.EPSILON = 1.0e-5
+        self.EPSILON = epsilon
 
 
     def init_grid(self):
         'Create an empty sample. '
-        self.converge_flag = True
+        # If the algorithm doesn't converge, just return the best point so far.
+        self.converge_flag = False
         self.widen_attempts = 0
         self.active_min = float(self.range_min)
         self.active_max = float(self.range_max)
@@ -83,6 +85,7 @@ class OneDimOpt:
         self.iseq = 0
         self.spectrum = viridis(self.CLR_CYCLE)  # colors to cycle thru. 
         self.spectrum.reverse()
+        self.x = []
         self.y = []
         self.half_range = (self.range_max - self.range_min)/2
 
@@ -159,7 +162,7 @@ class OneDimOpt:
         inv_mat_diag = np.diag(np.linalg.inv(np.matmul(np.transpose(X),X)))
         inv_mat_diag = [confidence_factor*z for z in inv_mat_diag]
         if self.DBG_LVL > 0:
-            print('Std err c: {:.4}, b: {:.4}, a:{:.4}'.format(*inv_mat_diag))  # Check the order. 
+            print('Std err c: {:.4}, b: {:.4}, a:{:.4}'.format(*inv_mat_diag))
         return inv_mat_diag
 
 
@@ -215,40 +218,56 @@ class OneDimOpt:
 
     def chose_search(self, fit, max_expansions= 6):
         'Depending on the fit, either expand, narrow or just increase the sample'
+        widened = False
+        # If convex is not significant and not significant slope, expand in both directions.
+        if self.widen_symmetric(fit, max_expansions):
+            widended = True
         # If min lies outside current range, expand to that side.
-        if self.widen_sample(max_expansions):
-            self.widen_attempts += 1
-        if abs(fit['COEFFICIENTS'][1]) > fit['STD_ERR'][1]: # The slope is significant either way        
-            self.widen_symmetric(max_expansions)
+        elif self.widen_sample(fit, max_expansions):
+            widened = True
+        elif abs(fit['COEFFICIENTS'][1]) > fit['STD_ERR'][1]: # The slope is significant either way        
             if self.DBG_LVL > -1:
                  print("Significant slope: {:.4}: ".format(fit['COEFFICIENTS'][1]), file=sys.stderr)
-        # If convex is not significant and not significant slope, expand in both directions.
         # If significant slope and not significant convex, expand to that side. 
         
          # If high noise, add sample biased toward extremes, and don'e shrink
 
         # If low noise, shrink extremes. 
+        if widened:
+            self.widen_attempts += 1
+        return widened
 
-    def widen_symmetric(self, max_expansions):
+    def widen_symmetric(self, fit, max_expansions):
         'Expand in both directions'
-        pass
+        widened = False
+        if self.widen_attempts < max_expansions: 
+            # If there's no evident slope or curvature
+            if abs(fit['COEFFICIENTS'][1]) <= fit['STD_ERR'][1] and abs(fit['COEFFICIENTS'][2]) <= fit['STD_ERR'][2]:
+                self.active_min = max(2 * self.active_min - self.active_max, self.bound_min)
+                self.active_max = min(2 * self.active_max - self.active_min, self.bound_max)
+                widened = True
+                if self.DBG_LVL > 0:                
+                    print ("\tRange increased to:", self.active_min, self.active_max)
+        else:
+            print("WARN:  Exceeded maximum number of interval widenings.", file = sys.stderr)
+        return widened
 
-    def widen_sample(self, max_tries = 6):
+
+    def widen_sample(self, fit, max_tries = 6):
         'If the estimated min falls out of the range, adjust the range by doubling it to that side.'
         widened = False
         if self.widen_attempts < max_tries:
             if not np.isnan(self.est_min):
-                if self.est_min < self.active_min:
+                if self.est_min < self.active_min or fit['COEFFICIENTS'][1] < -fit['STD_ERR'][1]:
                     self.active_min = max(2 * self.active_min - self.active_max, self.bound_min)
                     if self.DBG_LVL > 0:
                         print("\tMin reduced to: ", self.active_min)
                     widened = True
-                if self.est_min > self.active_max:
+                elif self.est_min > self.active_max or fit['COEFFICIENTS'][1] > fit['STD_ERR'][1]:
                     self.active_max = min(2 * self.active_max - self.active_min, self.bound_max)
                     if self.DBG_LVL > 0:                
                         print ("\tMax increased to:", self.active_max)
                     widened = True
-
         else:
             print("WARN:  Exceeded maximum number of interval widenings.", file = sys.stderr)
         return widened
@@ -279,7 +298,7 @@ class OneDimOpt:
             return pts
         
         def low_noise():
-            return False
+            return True
                 
         not_converged = True
         k = 0
@@ -304,17 +323,15 @@ class OneDimOpt:
                 break
             # Check self.est_min 
             # and decide to shrink or to expand it. 
-            self.chose_search(fit)
+            if not self.chose_search(fit):   # if not widened, then remove an outlier
+                self.search_grid = remove_extreme_pt(self.search_grid)
             if self.DBG_LVL > 0:
                 print("\tActive interval: [{:.4}, {:.4}]".format (self.active_min, self.active_max))
             # Increase the sample
             active_x = self.new_sample_pt()
             self.add_f_to_grid(active_x)
-            # and remove an extreme point. But, only if the noise is low.
-            if low_noise():
+            # and remove an extreme point. But, only if the noise is low.??
             # Successively narrow_sample_to_converge by removing eoints far away.'
-                self.search_grid = remove_extreme_pt(self.search_grid)
-
             last_est_min = self.est_min
             k += 1
         return self.search_grid
@@ -326,6 +343,14 @@ class OneDimOpt:
         self.init_grid()
         self.init_pts(initial_sample, f= target_function)
         self.run_to_convergence(max_iterations = max_iterations )
+        # Report results
+        print('\n', ''.join(40*['-']))
+        print('Sample size:', len(self.search_grid))
+        if self.converge_flag:
+            print('Min: ({:.4}, {:.4})'.format(self.est_min, 0.0))
+        else:
+            print('Not converged.\n\tBest point:', min(self.y))
+        print(''.join(40*['-']))
         return self
 
 ##################################################################################################
@@ -366,7 +391,7 @@ def plot_residuals(residuals):
 
 ###################################################################################
 # Test function examples
-def v_func(x, lft =10, rht =4, noise = 0.0):
+def v_func(x, lft =10, rht =4, noise = 0.2):
     min_pt = 1
     kcenter = 0
     fx = noise*np.random.random_sample()
@@ -398,7 +423,7 @@ if __name__ == "__main__":
         init_start = 10.0
 
     opt = OneDimOpt(range_min = -1, range_max= 1)
-    opt.search_for_min(initial_sample= 11,  max_iterations = 10, target_function = almost_lin)
+    opt.search_for_min(initial_sample= 10,  max_iterations = 10, target_function = v_func)
 
     sg = plot_search_grid(opt.search_grid, opt.est_pts, opt.colors_grid) #bokeh.palettes.Viridis11) # opt.colors_grid)
     rs = plot_residuals(opt.residuals)  
