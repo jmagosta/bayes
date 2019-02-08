@@ -137,7 +137,7 @@ class OneDimOpt:
             dm = np.vstack((dm, np.array(dm_sample(row), dtype='float')))
         return dm
 
-    def fit_parabola_to_sample(self, test_size = 1):
+    def fit_parabola_to_sample(self, test_size = 3):
         'Use conventional least squares to fit to the design matrix. test_size determines p-value'
         X = self.points_design_matrix()
         fit = {}
@@ -151,16 +151,16 @@ class OneDimOpt:
         # resid is the sum of residuals^2
         # To get the Residual Standard Error. Note the design matrix has 3 degrees of freedom
         fit['RESID_VAR'] = float(resid)/(len(self.y) -3)
-        fit['STD_ERR']= self.confidence_bounds(X, test_size * fit['RESID_VAR'])
+        fit['STD_ERR']= [ test_size * z for z in self.confidence_bounds(X, fit['RESID_VAR'])]
         #except:
         #    print("WARN: Quadratic fit did not converge {:.5}".format(0.0), file = sys.stderr)
         return fit
 
 
-    def confidence_bounds(self, X, confidence_factor = 1.0):
+    def confidence_bounds(self, X, resid_var):
         'For testing if a min exists, or is out of bounds using fit standard errors. Returns the std err for a, b, c.'
         inv_mat_diag = np.diag(np.linalg.inv(np.matmul(np.transpose(X),X)))
-        inv_mat_diag = [confidence_factor*z for z in inv_mat_diag]
+        inv_mat_diag = [math.sqrt(resid_var*z) for z in inv_mat_diag]
         if self.DBG_LVL > 0:
             print('Std err c: {:.4}, b: {:.4}, a:{:.4}'.format(*inv_mat_diag))
         return inv_mat_diag
@@ -192,6 +192,7 @@ class OneDimOpt:
 
     def new_sample_pt(self):
         'Pick a new point in the current active range biased toward influential values.'
+        ### TODO - pick to the side of the min to restore balance on either side of the interval. 
         ### Add a point that straddles the est min, within the active interval
         #   Just using the current min as the new point, biases the converged value
         #   to the current estimate, so this sampling approach avoids this
@@ -258,13 +259,15 @@ class OneDimOpt:
         widened = False
         if self.widen_attempts < max_tries:
             if not np.isnan(self.est_min):
-                if self.est_min < self.active_min or fit['COEFFICIENTS'][1] < -fit['STD_ERR'][1]:
-                    self.active_min = max(2 * self.active_min - self.active_max, self.bound_min)
+                # Extend active region to place estimated min in the active interval center. 
+                # Better yet, extend if est min has no support to one side. 
+                if self.est_min < self.active_min: # or fit['COEFFICIENTS'][1] < -fit['STD_ERR'][1]:
+                    self.active_min = max(2 * self.est_min - self.active_max, self.bound_min)
                     if self.DBG_LVL > 0:
                         print("\tMin reduced to: ", self.active_min)
                     widened = True
-                elif self.est_min > self.active_max or fit['COEFFICIENTS'][1] > fit['STD_ERR'][1]:
-                    self.active_max = min(2 * self.active_max - self.active_min, self.bound_max)
+                elif self.est_min > self.active_max: # or fit['COEFFICIENTS'][1] > fit['STD_ERR'][1]:
+                    self.active_max = min(2 * self.est_min - self.active_min, self.bound_max)
                     if self.DBG_LVL > 0:                
                         print ("\tMax increased to:", self.active_max)
                     widened = True
@@ -297,8 +300,9 @@ class OneDimOpt:
             self.y = [z[1] for z in pts]
             return pts
         
-        def low_noise():
-            return True
+        def remove_imbalance(pts):
+            'Narrow the interval by removing points on more plentiful side of the est min.'
+            return pts
                 
         not_converged = True
         k = 0
@@ -404,8 +408,8 @@ def v_func(x, lft =10, rht =4, noise = 0.2):
     return fx 
 
 # A min outside the search range
-def almost_lin( x, b = 0, a = -0.01, noise = 1.0):
-    return 1 + b*x + a*x*x + noise*np.random.random_sample()
+def almost_lin( x, c = -0.5, b = 0, a = 0.01, noise = 0.10):
+    return c + b*x + a*x*x + noise*np.random.random_sample()
     
 # A decidedly non-parabolic function with a global min 
 def example_f(x, sc = 2.60,  noise = 0.0010, wave=0.6):
@@ -422,8 +426,8 @@ if __name__ == "__main__":
     else:
         init_start = 10.0
 
-    opt = OneDimOpt(range_min = -1, range_max= 1)
-    opt.search_for_min(initial_sample= 10,  max_iterations = 10, target_function = v_func)
+    opt = OneDimOpt(range_min = 0, range_max= 2)
+    opt.search_for_min(initial_sample= 30,  max_iterations = 10, target_function = almost_lin)
 
     sg = plot_search_grid(opt.search_grid, opt.est_pts, opt.colors_grid) #bokeh.palettes.Viridis11) # opt.colors_grid)
     rs = plot_residuals(opt.residuals)  
