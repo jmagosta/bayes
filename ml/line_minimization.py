@@ -182,9 +182,14 @@ class OneDimOpt:
         if a != 0:
             # Compute estimated minimum
             self.est_min = -0.5*b/a
+            y_index = bisect.bisect_left(self.x, self.est_min)
+            if y_index < len(self.y):
+                self.est_min_y = self.y[y_index]
+            else:
+                self.est_min_y = self.active_max # a hack
         else:
             self.est_min = math.nan
-        print('\tEstimated min at: {:.4}/2*{:.4} = {:.4}'.format(-b, a, self.est_min))
+        print('\tEstimated min at: ( {:.4}/2*{:.4} = {:.4}, {:.4} )'.format( -b, a, self.est_min, self.est_min_y))
         self.residuals.append((self.est_min, errs))
         self.est_pts = [x_s, y_est]
         return self
@@ -351,9 +356,9 @@ class OneDimOpt:
         print('\n', ''.join(40*['-']))
         print('Sample size:', len(self.search_grid))
         if self.converge_flag:
-            print('Min: ({:.4}, {:.4})'.format(self.est_min, 0.0))
+            print('Min: ({:.4}, {:.4})'.format(self.est_min), self.est_min_y)
         else:
-            print('Not converged.\n\tBest point:', min(self.y))
+            print('Not converged.\n\tBest point: ({}, {})'.format( self.est_min, min(self.y)))
         print(''.join(40*['-']))
         return self
 
@@ -398,7 +403,7 @@ def plot_residuals(residuals):
 def v_func(x, lft =10, rht =4, noise = 0.2):
     min_pt = 1
     kcenter = 0
-    fx = noise*np.random.random_sample()
+    fx = noise*(np.random.random_sample() - 0.5)
     if abs(x - kcenter) < 1e-4:
         fx += min_pt
     if x < kcenter:
@@ -408,13 +413,13 @@ def v_func(x, lft =10, rht =4, noise = 0.2):
     return fx 
 
 # A min outside the search range
-def almost_lin( x, c = -0.5, b = 0, a = 0.01, noise = 0.10):
-    return c + b*x + a*x*x + noise*np.random.random_sample()
+def almost_lin( x, c = -0.5, b = 0, a = 1.0, noise = 0.10):
+    return c + b*x + a*x*x + noise*(np.random.random_sample() -0.5)
     
 # A decidedly non-parabolic function with a global min 
 def example_f(x, sc = 2.60,  noise = 0.0010, wave=0.6):
     'Function over the range to minimize in one dim'
-    return sc*sc*math.exp((x-1.5)*sc) + sc*sc*math.exp(-(1.9 + x)*sc) + wave* math.sin(4* x) + noise*np.random.random_sample()
+    return sc*sc*math.exp((x-1.5)*sc) + sc*sc*math.exp(-(1.9 + x)*sc) + wave* math.sin(4* x) + noise*(np.random.random_sample() -0.5)
 
 ################################################################################
 ### MAIN
@@ -426,8 +431,8 @@ if __name__ == "__main__":
     else:
         init_start = 10.0
 
-    opt = OneDimOpt(range_min = 0, range_max= 2)
-    opt.search_for_min(initial_sample= 30,  max_iterations = 10, target_function = almost_lin)
+    opt = OneDimOpt(range_min = -5, range_max= 2)
+    opt.search_for_min(initial_sample= 20,  max_iterations = 20, target_function = example_f)
 
     sg = plot_search_grid(opt.search_grid, opt.est_pts, opt.colors_grid) #bokeh.palettes.Viridis11) # opt.colors_grid)
     rs = plot_residuals(opt.residuals)  
