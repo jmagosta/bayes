@@ -182,9 +182,9 @@ class OneDimOpt:
         if a != 0:
             # Compute estimated minimum
             self.est_min = -0.5*b/a
-            y_index = bisect.bisect_left(self.x, self.est_min)
-            if y_index < len(self.y):
-                self.est_min_y = self.y[y_index]
+            min_index = bisect.bisect_left(self.x, self.est_min)
+            if min_index < len(self.y):
+                self.est_min_y = self.y[min_index]
             else:
                 self.est_min_y = self.active_max # a hack
         else:
@@ -206,7 +206,12 @@ class OneDimOpt:
         #    active interval.)
         # TODO - need a better way to pick points in the interval. e.g SOBOL randomization,
         # assuming a deterministic function
-        return  random.uniform(self.active_min, self.active_max)
+        min_index = bisect.bisect_left(self.x, self.est_min)
+        if min_index >= math.floor(len(self.x)/2):
+            new_pt =  random.uniform(self.est_min, self.active_max)
+        else:
+            new_pt =  random.uniform(self.active_min, self.est_min)
+        return new_pt
         
 
     def check_fit(self, fit):
@@ -356,7 +361,7 @@ class OneDimOpt:
         print('\n', ''.join(40*['-']))
         print('Sample size:', len(self.search_grid))
         if self.converge_flag:
-            print('Min: ({:.4}, {:.4})'.format(self.est_min), self.est_min_y)
+            print('Min: ({:.4}, {:.4})'.format(self.est_min, self.est_min_y))
         else:
             print('Not converged.\n\tBest point: ({}, {})'.format( self.est_min, min(self.y)))
         print(''.join(40*['-']))
@@ -431,8 +436,8 @@ if __name__ == "__main__":
     else:
         init_start = 10.0
 
-    opt = OneDimOpt(range_min = -5, range_max= 2)
-    opt.search_for_min(initial_sample= 20,  max_iterations = 20, target_function = example_f)
+    opt = OneDimOpt(range_min = 1, range_max= 2)
+    opt.search_for_min(initial_sample= 10,  max_iterations = 23, target_function = example_f)
 
     sg = plot_search_grid(opt.search_grid, opt.est_pts, opt.colors_grid) #bokeh.palettes.Viridis11) # opt.colors_grid)
     rs = plot_residuals(opt.residuals)  
