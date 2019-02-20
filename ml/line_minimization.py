@@ -20,7 +20,7 @@ import bisect
 import pprint
 import random
 import numpy as np 
-import scipy.stats as ss      # scipy.stats.t distribution, e.g. t.cdf
+# import scipy.stats as ss      # scipy.stats.t distribution, e.g. t.cdf
 
 from bokeh.plotting import figure, show
 from bokeh.layouts import column
@@ -35,7 +35,7 @@ class OneDimOpt:
     'Use a quadratic approx to a set of points in one dimension to search for a minimum.'
 
     # =1: some tracing.  =2: more tracing.  Set to zero to only report warnings. 
-    DBG_LVL = 1
+    DBG_LVL = 0
 
     # Search modes
     OK = 0
@@ -72,8 +72,8 @@ class OneDimOpt:
 
     def init_grid(self):
         'Create an empty sample. '
+        self.converged= False
         # If the algorithm doesn't converge, just return the best point so far.
-        self.converge_flag = False
         self.widen_attempts = 0
         self.active_min = float(self.range_min)
         self.active_max = float(self.range_max)
@@ -102,7 +102,7 @@ class OneDimOpt:
         # We want the x value for the min y in the initial sample
         min_at = self.y.index(min(self.y))
         self.initial_guess =  self.x[min_at]
-        if self.DBG_LVL > 0:
+        if self.DBG_LVL > 1:
             print("Initial points:")
             pprint.pprint(self.search_grid)
 
@@ -293,7 +293,7 @@ class OneDimOpt:
             'An extreme point is the largest of either the first or last of the sample'
             # Remove the first point
             if pts[0][1] > pts[-1][1]:
-                if self.DBG_LVL > -1:
+                if self.DBG_LVL > 0:
                     print("Removed ({:.4}, {:.4})".format( pts[0][0], pts[0][1]))
                 del(pts[0])
                 del(self.colors_grid[0])
@@ -301,7 +301,7 @@ class OneDimOpt:
                 self.active_min = pts[1][0]
             # Remove the last point
             else:
-                if self.DBG_LVL > -1:
+                if self.DBG_LVL > 0:
                     print("Removed ({:.4}, {:.4})".format( pts[-1][0], pts[-1][1]))
                 del(pts[-1])
                 del(self.colors_grid[-1])
@@ -315,10 +315,10 @@ class OneDimOpt:
             'Narrow the interval by removing points on more plentiful side of the est min.'
             return pts
                 
-        not_converged = True
         k = 0
         last_est_min = self.initial_guess
-        while not_converged:
+        while not self.converged:
+            if self.DBG_LVL > 0:
             print("\nk = {}".format(k))
             fit = self.fit_parabola_to_sample()
             self.eval_fit(fit['COEFFICIENTS'])
@@ -329,8 +329,9 @@ class OneDimOpt:
                 break 
             # Has the search converged?
             if abs(self.est_min - last_est_min) < self.EPSILON * self.half_range:
-                print('Converged at {:.5}'.format(self.est_min))
-                self.converge_flag = True
+                self.converged = True
+                if self.DBG_LVL > -1
+                    print('Converged at {:.5}'.format(self.est_min))
                 break
             if k >= max_iterations:
                 print('Exceeded max interations {}'.format(k))
@@ -354,9 +355,10 @@ class OneDimOpt:
 
     def search_for_min(self, max_iterations = 10, target_function = (lambda x: x*x + x),
             initial_sample =5):
-        # Create some widely-spaced starting points, to broaden search over possible local optima. 
         self.init_grid()
+        # Create some widely-spaced starting points, to broaden search over possible local optima. 
         self.init_pts(initial_sample, f= target_function)
+        # Iterate until convergence, non-convex fit, or iterations are exceeded.
         self.run_to_convergence(max_iterations = max_iterations )
         # Report results
         print('\n', ''.join(40*['-']))
@@ -367,6 +369,10 @@ class OneDimOpt:
             print('Not converged.\n\tBest point: ({}, {})'.format( self.est_min, min(self.y)))
         print(''.join(40*['-']))
         return self
+
+    def findings(self):
+        'Results of the search'
+        pass
 
 ##################################################################################################
 # Utility functions

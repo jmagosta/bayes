@@ -1,12 +1,17 @@
+# See https://help.github.com/ignore-files/ for more about ignoring files.
+
+# misc
 .DS_Store
-.sass-cache
-_site/
-*~
-*.xml
-*.Rproj
-.Rhistory
-settings.json
+.vscode
+.ipynb_checkpoints/
+__pycache__/
+Log.ini
 
-
-
+*.csv
+*.zip
+*.pickle
+*.pkl
+*.joblib
+secret.py
+.vscode/settings.json
 
