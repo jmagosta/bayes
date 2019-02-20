@@ -1,0 +1,12 @@
+.DS_Store
+.sass-cache
+_site/
+*~
+*.xml
+*.Rproj
+.Rhistory
+settings.json
+
+
+
+

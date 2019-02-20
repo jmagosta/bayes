@@ -29,6 +29,7 @@ from bokeh.palettes import viridis
 #from bokeh.io import output_notebook
 # output_notebook()
 
+MAX_INT32 = (1 << 31) - 1
 
 class OneDimOpt:
     'Use a quadratic approx to a set of points in one dimension to search for a minimum.'
@@ -137,7 +138,7 @@ class OneDimOpt:
             dm = np.vstack((dm, np.array(dm_sample(row), dtype='float')))
         return dm
 
-    def fit_parabola_to_sample(self, test_size = 3):
+    def fit_parabola_to_sample(self, test_size = 1.9):
         'Use conventional least squares to fit to the design matrix. test_size determines p-value'
         X = self.points_design_matrix()
         fit = {}
@@ -422,7 +423,7 @@ def almost_lin( x, c = -0.5, b = 0, a = 1.0, noise = 0.10):
     return c + b*x + a*x*x + noise*(np.random.random_sample() -0.5)
     
 # A decidedly non-parabolic function with a global min 
-def example_f(x, sc = 2.60,  noise = 0.0010, wave=0.6):
+def example_f(x, sc = 2.60,  noise = 0.10, wave=0.6):
     'Function over the range to minimize in one dim'
     return sc*sc*math.exp((x-1.5)*sc) + sc*sc*math.exp(-(1.9 + x)*sc) + wave* math.sin(4* x) + noise*(np.random.random_sample() -0.5)
 
@@ -436,8 +437,8 @@ if __name__ == "__main__":
     else:
         init_start = 10.0
 
-    opt = OneDimOpt(range_min = 1, range_max= 2)
-    opt.search_for_min(initial_sample= 10,  max_iterations = 23, target_function = example_f)
+    opt = OneDimOpt(range_min = 0, range_max= 4)
+    opt.search_for_min(initial_sample= 100,  max_iterations = 23, target_function = example_f)
 
     sg = plot_search_grid(opt.search_grid, opt.est_pts, opt.colors_grid) #bokeh.palettes.Viridis11) # opt.colors_grid)
     rs = plot_residuals(opt.residuals)  
