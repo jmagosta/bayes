@@ -319,7 +319,7 @@ class OneDimOpt:
         last_est_min = self.initial_guess
         while not self.converged:
             if self.DBG_LVL > 0:
-            print("\nk = {}".format(k))
+                print("\nk = {}".format(k))
             fit = self.fit_parabola_to_sample()
             self.eval_fit(fit['COEFFICIENTS'])
             check= self.check_fit(fit) 
@@ -330,7 +330,7 @@ class OneDimOpt:
             # Has the search converged?
             if abs(self.est_min - last_est_min) < self.EPSILON * self.half_range:
                 self.converged = True
-                if self.DBG_LVL > -1
+                if self.DBG_LVL > -1:
                     print('Converged at {:.5}'.format(self.est_min))
                 break
             if k >= max_iterations:
