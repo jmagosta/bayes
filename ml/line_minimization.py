@@ -1,4 +1,4 @@
-# bisection_minimization.py
+# line_minimization.py
 # JMA 30 Nov 2018
 # coding: utf-8
 
@@ -13,7 +13,15 @@
 # in Jupyter notebooks (JupyterHub) to get plots, or check out the 
 # JupyterLab extensions at https://github.com/bokeh/jupyterlab_bokeh
 # 
-# Example of optimization by bisection line search
+# Compare to 
+# stochastic optimization (Robbins and Monro, 1951), ; Spall, 2003)
+# H. Robbins and S. Monro. A stochastic approximation method. The Annals of Mathematical Statistics, 22(3):400–407, 1951.
+# J. Spall. Introduction to Stochastic Search and Optimization: Estimation, Simulation, and Control.
+# Also
+# S. Amari. Natural gradient works efficiently in learning. Neural computation, 10(2):251–276, 1998.
+# John Wiley and Sons, 2003.
+# and bisection line search
+
 import os, sys
 import math
 import bisect
@@ -71,7 +79,6 @@ class OneDimOpt:
 
     def init_grid(self):
         'Create an empty sample. '
-        # If the algorithm doesn't converge, just return the best point so far.
         self.converge_flag = False
         self.widen_attempts = 0
         self.active_min = float(self.range_min)
@@ -107,7 +114,7 @@ class OneDimOpt:
 
 
     def add_f_to_grid(self, x):
-        'Add points in sorted order to the sample'
+        'Add a point in sorted order to the sample.'
         self.x = [z[0] for z in self.search_grid]
         found_k = bisect.bisect_left(self.x, x)
         # Check if the point goes just after the last point or 
@@ -442,6 +449,3 @@ if __name__ == "__main__":
     sg = plot_search_grid(opt.search_grid, opt.est_pts, opt.colors_grid) #bokeh.palettes.Viridis11) # opt.colors_grid)
     rs = plot_residuals(opt.residuals)  
     show(column(sg, rs))
-
-
- 
