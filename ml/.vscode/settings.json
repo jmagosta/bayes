@@ -1,4 +1,5 @@
 {
-    "window.menuBarVisibility": "default",
-    "python.pythonPath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\Anaconda3_64\\python.exe"
+    "python.pythonPath": "C:\\ProgramData\\Miniconda3\\python.exe",
+    "python.linting.enabled": false
 }
+

@@ -1,0 +1,17 @@
+# See https://help.github.com/ignore-files/ for more about ignoring files.
+
+# misc
+.DS_Store
+.vscode
+.ipynb_checkpoints/
+__pycache__/
+Log.ini
+
+*.csv
+*.zip
+*.pickle
+*.pkl
+*.joblib
+secret.py
+.vscode/settings.json
+

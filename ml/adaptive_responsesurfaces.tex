@@ -1,0 +1,13 @@
+\section*{One dimensional line search via estimation}
+ 
+ A robust optimization technique that assumes the function to be optimized 
+ is unimodal, continuous but not differentiable, and noisy. The function is approximated 
+ by a parabola over the set of points that have been computed, assuming that the 
+ function is convex withn the range of points
+
+This adaptive stochastic optimization is in concept similar to \emph{Response Surface Methodology} (RSM) techniques first suggested by \cite{?}. RSM was implemented as a batch function approximation method, fitting a model e.g. a low order high degree polynomial to a sampled set of points. Our function approximation approach uses an adaptive sampling method instead, applied to search in one dimension. The concept is similar, but the application was seen as a ``Metamodel'' to summarize the results of an experimental design. Our goal instead is to improve optimization convergence under noisy measurements. 
+
+\ref{Box, G. E. P. and Wilson, K.B. (1951) On the Experimental Attainment of Optimum Conditions (with discussion). Journal of the Royal Statistical Society Series B 13(1):1–45.}
+
+See also 
+\ref{http://www.stat.columbia.edu/~liam/teaching/compstat-spr14/lauren-notes.pdf}

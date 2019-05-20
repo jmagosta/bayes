@@ -28,7 +28,7 @@ import bisect
 import pprint
 import random
 import numpy as np 
-import scipy.stats as ss      # scipy.stats.t distribution, e.g. t.cdf
+# import scipy.stats as ss      # scipy.stats.t distribution, e.g. t.cdf
 
 from bokeh.plotting import figure, show
 from bokeh.layouts import column
@@ -37,12 +37,13 @@ from bokeh.palettes import viridis
 #from bokeh.io import output_notebook
 # output_notebook()
 
+MAX_INT32 = (1 << 31) - 1
 
 class OneDimOpt:
     'Use a quadratic approx to a set of points in one dimension to search for a minimum.'
 
     # =1: some tracing.  =2: more tracing.  Set to zero to only report warnings. 
-    DBG_LVL = 1
+    DBG_LVL = 2
 
     # Search modes
     OK = 0
@@ -56,14 +57,10 @@ class OneDimOpt:
 
 
     def __init__(self,
-        range_min  = -1, 
-        range_max =  1,
         epsilon = 1.0E-5,
         bound_min = None,
         bound_max = None):
-        # Initialization 
-        self.range_min = range_min
-        self.range_max = range_max
+        'Inits that are constant over multiple episodes.'
         # Default will be to set the search bounds wide. Or optionally to the initial range
         if bound_max is not None:
             self.bound_max = bound_max
@@ -73,13 +70,18 @@ class OneDimOpt:
             self.bound_min = bound_min
         else:
             self.bound_min = -sys.float_info.max 
-        
         self.EPSILON = epsilon
 
 
-    def init_grid(self):
+    def init_grid(self,
+        range_min  = -1, 
+        range_max =  1):
         'Create an empty sample. '
-        self.converge_flag = False
+        self.converged= False
+        # Initialization 
+        self.range_min = range_min
+        self.range_max = range_max
+        # If the algorithm doesn't converge, just return the best point so far.
         self.widen_attempts = 0
         self.active_min = float(self.range_min)
         self.active_max = float(self.range_max)
@@ -89,17 +91,19 @@ class OneDimOpt:
         self.residuals = []
         # Also assign plotting colors to points
         self.colors_grid = []
-        self.iseq = 0
+        self.iseq = 0         # Color index 
         self.spectrum = viridis(self.CLR_CYCLE)  # colors to cycle thru. 
         self.spectrum.reverse()
         self.x = []
         self.y = []
         self.half_range = (self.range_max - self.range_min)/2
 
+
     def init_pts(self, no_pts=3, f = (lambda x:1.0 - x + 10.0*x*x + np.random.random_sample()),
         init_color = 'navajowhite'):
         'Add initial points to the sample.'
         self.f = f
+        self.k_final = 0
         grid_x = np.linspace(self.range_min, self.range_max, no_pts)
         self.search_grid = list(zip(grid_x, map(self.f, grid_x)))
         self.x = [z[0] for z in self.search_grid]
@@ -108,7 +112,7 @@ class OneDimOpt:
         # We want the x value for the min y in the initial sample
         min_at = self.y.index(min(self.y))
         self.initial_guess =  self.x[min_at]
-        if self.DBG_LVL > 0:
+        if self.DBG_LVL > 1:
             print("Initial points:")
             pprint.pprint(self.search_grid)
 
@@ -144,7 +148,7 @@ class OneDimOpt:
             dm = np.vstack((dm, np.array(dm_sample(row), dtype='float')))
         return dm
 
-    def fit_parabola_to_sample(self, test_size = 3):
+    def fit_parabola_to_sample(self, test_size = 1.9):
         'Use conventional least squares to fit to the design matrix. test_size determines p-value'
         X = self.points_design_matrix()
         fit = {}
@@ -168,7 +172,7 @@ class OneDimOpt:
         'For testing if a min exists, or is out of bounds using fit standard errors. Returns the std err for a, b, c.'
         inv_mat_diag = np.diag(np.linalg.inv(np.matmul(np.transpose(X),X)))
         inv_mat_diag = [math.sqrt(resid_var*z) for z in inv_mat_diag]
-        if self.DBG_LVL > 0:
+        if self.DBG_LVL > 1:
             print('Std err c: {:.4}, b: {:.4}, a:{:.4}'.format(*inv_mat_diag))
         return inv_mat_diag
 
@@ -176,16 +180,17 @@ class OneDimOpt:
 
     def eval_fit(self, coeffs):
         'Compute the fitted values for the parabola fit, along with errors and est min.'
-        pts = self.search_grid
         c = coeffs[0]
         b = coeffs[1]
         a = coeffs[2]
+        pts = self.search_grid
         x_s = [z[0] for z in pts]
         y_s = [z[1] for z in pts]
         y_est = [a * x * x + b * x + c for x in x_s]
         # List the absolute value (L1) errors for the fit.
         errs = sum([abs(pt[1] - pt[0]) for pt in zip(y_est, y_s)])/len(y_s)
-        print('\tResidual mean abs error: {:.5}'.format(errs))
+        if self.DBG_LVL > 1:
+            print('\tResidual mean abs error: {:.5}'.format(errs))
         if a != 0:
             # Compute estimated minimum
             self.est_min = -0.5*b/a
@@ -196,7 +201,8 @@ class OneDimOpt:
                 self.est_min_y = self.active_max # a hack
         else:
             self.est_min = math.nan
-        print('\tEstimated min at: ( {:.4}/2*{:.4} = {:.4}, {:.4} )'.format( -b, a, self.est_min, self.est_min_y))
+        if self.DBG_LVL > 1:
+            print('\tEstimated min at: ( {:.4}/2*{:.4} = {:.4}, {:.4} )'.format( -b, a, self.est_min, self.est_min_y))
         self.residuals.append((self.est_min, errs))
         self.est_pts = [x_s, y_est]
         return self
@@ -244,7 +250,7 @@ class OneDimOpt:
         elif self.widen_sample(fit, max_expansions):
             widened = True
         elif abs(fit['COEFFICIENTS'][1]) > fit['STD_ERR'][1]: # The slope is significant either way        
-            if self.DBG_LVL > -1:
+            if self.DBG_LVL > 0:
                  print("Significant slope: {:.4}: ".format(fit['COEFFICIENTS'][1]), file=sys.stderr)
         # If significant slope and not significant convex, expand to that side. 
         
@@ -299,7 +305,7 @@ class OneDimOpt:
             'An extreme point is the largest of either the first or last of the sample'
             # Remove the first point
             if pts[0][1] > pts[-1][1]:
-                if self.DBG_LVL > -1:
+                if self.DBG_LVL > 0:
                     print("Removed ({:.4}, {:.4})".format( pts[0][0], pts[0][1]))
                 del(pts[0])
                 del(self.colors_grid[0])
@@ -307,7 +313,7 @@ class OneDimOpt:
                 self.active_min = pts[1][0]
             # Remove the last point
             else:
-                if self.DBG_LVL > -1:
+                if self.DBG_LVL > 0:
                     print("Removed ({:.4}, {:.4})".format( pts[-1][0], pts[-1][1]))
                 del(pts[-1])
                 del(self.colors_grid[-1])
@@ -321,26 +327,30 @@ class OneDimOpt:
             'Narrow the interval by removing points on more plentiful side of the est min.'
             return pts
                 
-        not_converged = True
         k = 0
-        last_est_min = self.initial_guess
-        while not_converged:
-            print("\nk = {}".format(k))
+        self.last_est_min = self.initial_guess
+        while not self.converged:
+            if self.DBG_LVL > 0:
+                print("\nk = {}".format(k))
             fit = self.fit_parabola_to_sample()
             self.eval_fit(fit['COEFFICIENTS'])
             check= self.check_fit(fit) 
             if check == self.CONCAVE:
                 print('WARN: Try a different starting sample.')
-                self.converge_flag = False
+                self.converged = False
+                self.k_final = k
                 break 
             # Has the search converged?
-            if abs(self.est_min - last_est_min) < self.EPSILON * self.half_range:
-                print('Converged at {:.5}'.format(self.est_min))
-                self.converge_flag = True
+            if abs(self.est_min - self.last_est_min) < self.EPSILON * self.half_range:
+                self.converged = True
+                if self.DBG_LVL > -1:
+                    print('Converged at {:.5}'.format(self.est_min))
+                self.k_final = k
                 break
             if k >= max_iterations:
                 print('Exceeded max interations {}'.format(k))
-                self.converge_flag = False
+                self.converged = False
+                self.k_final = k
                 break
             # Check self.est_min 
             # and decide to shrink or to expand it. 
@@ -353,26 +363,40 @@ class OneDimOpt:
             self.add_f_to_grid(active_x)
             # and remove an extreme point. But, only if the noise is low.??
             # Successively narrow_sample_to_converge by removing eoints far away.'
-            last_est_min = self.est_min
+            self.last_est_min = self.est_min
             k += 1
         return self.search_grid
 
 
-    def search_for_min(self, max_iterations = 10, target_function = (lambda x: x*x + x),
-            initial_sample =5):
-        # Create some widely-spaced starting points, to broaden search over possible local optima. 
-        self.init_grid()
-        self.init_pts(initial_sample, f= target_function)
-        self.run_to_convergence(max_iterations = max_iterations )
-        # Report results
+    def findings(self):
+        'Results of the search'
         print('\n', ''.join(40*['-']))
-        print('Sample size:', len(self.search_grid))
-        if self.converge_flag:
-            print('Min: ({:.4}, {:.4})'.format(self.est_min, self.est_min_y))
+        print('Sample size: {}\t Iterations: {}'.format(len(self.search_grid), self.k_final))
+        print("Final search interval: [{:.4}, {:.4}]".format (self.active_min, self.active_max))
+        if self.converged:
+            print('Min @: ({:.4}, {:.4})'.format(self.est_min, self.est_min_y))
         else:
-            print('Not converged.\n\tBest point: ({}, {})'.format( self.est_min, min(self.y)))
+            print('Not converged.\n\tBest point: ({}, {}), Gap: {}'.format( self.est_min, min(self.y), self.last_est_min - self.est_min))
         print(''.join(40*['-']))
         return self
+
+
+    def search_for_min(self, range_min = 0, range_max= 4, 
+                             max_iterations = 10, 
+                             target_function = (lambda x: x*x + x),
+                             initial_sample =10):
+        '''Top level function. 
+            For convergence max_iterations should exceed initial sample size.
+        '''
+        self.init_grid()
+        # Create some widely-spaced starting points, to broaden search over possible local optima. 
+        self.init_pts(initial_sample, f= target_function)
+        # Iterate until convergence, non-convex fit, or iterations are exceeded.
+        self.run_to_convergence(max_iterations = max_iterations )
+        # Report results
+        self.findings()
+        return self
+
 
 ##################################################################################################
 # Utility functions
@@ -429,7 +453,7 @@ def almost_lin( x, c = -0.5, b = 0, a = 1.0, noise = 0.10):
     return c + b*x + a*x*x + noise*(np.random.random_sample() -0.5)
     
 # A decidedly non-parabolic function with a global min 
-def example_f(x, sc = 2.60,  noise = 0.0010, wave=0.6):
+def example_f(x, sc = 2.60,  noise = 0.10, wave=0.6):
     'Function over the range to minimize in one dim'
     return sc*sc*math.exp((x-1.5)*sc) + sc*sc*math.exp(-(1.9 + x)*sc) + wave* math.sin(4* x) + noise*(np.random.random_sample() -0.5)
 
@@ -443,8 +467,8 @@ if __name__ == "__main__":
     else:
         init_start = 10.0
 
-    opt = OneDimOpt(range_min = 1, range_max= 2)
-    opt.search_for_min(initial_sample= 10,  max_iterations = 23, target_function = example_f)
+    opt = OneDimOpt()
+    opt.search_for_min(initial_sample= 100,  max_iterations = 23, target_function = example_f)
 
     sg = plot_search_grid(opt.search_grid, opt.est_pts, opt.colors_grid) #bokeh.palettes.Viridis11) # opt.colors_grid)
     rs = plot_residuals(opt.residuals)  
