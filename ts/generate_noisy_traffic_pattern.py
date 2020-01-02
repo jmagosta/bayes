@@ -19,7 +19,6 @@ import statsmodels.nonparametric.smoothers_lowess
 
 from bokeh.plotting import figure, save, show, output_file
 from bokeh.io import output_notebook
-output_notebook()
 index = 0
 MIN_PER_DAY = 24*60
 
@@ -53,7 +52,7 @@ def tst_example():
     'Return a dict of parameters.'
     parameters = dict()
     # Time base
-    parameters["n_days"] = 8 # how many days do you want to run this pattern?
+    parameters["n_days"] = 1 # how many days do you want to run this pattern?
     # Amplitude
     parameters['max_amplitude'] = 1000  # 10 VMs 
     # Periodic components
@@ -81,7 +80,7 @@ class noisyTraffic(object):
         ' pms - parameter dict, index - output file number.'
         # Output file
         index += index
-        self.save_csv_file = f"P{index}r{pms['rate']}_n{pms['noise_lvl']}_d{pms['daily_amplitudes'][0]}_h{pms['hourly_amplitudes'][0]}_pattern.csv"
+        self.save_csv_file = f"P{index}_n{pms['n_days']}_e{pms['noise_lvl']}_d{pms['daily_amplitudes'][0]}_h{pms['hourly_amplitudes'][0]}_pattern.csv"
 
     def assembleComponents(self, pms):
         '''Assemble various cyclic, trend and noise components.
@@ -100,33 +99,33 @@ class noisyTraffic(object):
         # Noise 
         rs = np.random.RandomState()
         normal_rnd = rs.standard_normal(duration)
-        series = abs(series + pms['noise_lvl'] * normal_rnd)
+        noisy_series = abs(series + pms['noise_lvl'] * normal_rnd)
         # Create numpy array
-        self.pattern = np.vstack([ts, series])
+        self.pattern = np.stack([ts, noisy_series], axis=1)
+        self.true_signal = np.stack([ts, series], axis=1)
 
         # Compare to a smoothed version 
-        estxy = statsmodels.nonparametric.smoothers_lowess.lowess(series, ts, frac=0.05, it=3, is_sorted=True)
-        sm_x, sm_y = list(zip(*estxy))
-        self.smoothed = np.vstack([np.array(sm_x), np.array(sm_y)])  # TODO find a cleaner way. 
+        # estxy = statsmodels.nonparametric.smoothers_lowess.lowess(series, ts, frac=0.05, it=3, is_sorted=True)
+        # sm_x, sm_y = list(zip(*estxy))
+        # self.smoothed = np.vstack([np.array(sm_x), np.array(sm_y)])  # TODO find a cleaner way. 
 
-def plt_fit(ts, series, sm_x, sm_y):
+def plt_fit(actual_ts, true_ts):
     # bokeh is working. 
     TOOLS = "hover,pan,box_zoom,save"
     # colors = ["#%02x%02x%02x" % (int(127 + 127*r),100, int(127 + 127*r)) for r in special.erf(normal_rnd)]
     colors = "#%02x%02x%02x"
     p1 = figure(width=800, height=300, tools=TOOLS)
-    p1.scatter(ts, series, color='grey', size=0.4,alpha=0.4)
-    p1.line(sm_x, sm_y, line_color = 'Black')
+    p1.scatter(actual_ts[:,0], actual_ts[:,1], color='grey', size=1.0,alpha=0.4)
+    p1.line(true_ts[:,0], true_ts[:,1], line_color = 'Black')
     show(p1)
 
-def wr_ts(series, save_csv_file):
+def wr_ts(actual_ts, true_ts, save_csv_file):
     # Create a two column csv file with header minutes = 0..1399, cpuload > 0 from a np array.
     # Creating pandas dataframe from numpy array
-    dataset = pd.DataFrame({'minutes': series[:, 0], 'cpuload': series[:, 1]})
-    df = dict(minutes=ts, cpuload=series)
-    # TODO  - convert to datetime? 
-    df = pd.DataFrame(df)
-    df.to_csv(save_csv_file, index=False)
+    # Assume actual_ts and true_ts have the same time column
+    dataset = pd.DataFrame({'minutes': actual_ts[:,0], 'cpuload': actual_ts[:,1], 'trueload': true_ts[:,1]})
+    dataset.to_csv(save_csv_file, index=False)
+    print('# Wrote to: ', save_csv_file)
 
 ### MAIN
 ################################################################################
@@ -139,7 +138,7 @@ if __name__ == "__main__":
     p = tst_example()
     pattern = noisyTraffic(p)
     pattern.assembleComponents(p)
-    print(pattern.pattern)
-    #plt_fit(ts, series, sm)
-    #wr_ts(ts, series, out_file)
+    #print(pattern.pattern)
+    plt_fit(pattern.pattern, pattern.true_signal)
+    wr_ts(pattern.pattern, pattern.true_signal, pattern.save_csv_file)
 
