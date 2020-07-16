@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Evaluation and expressions in python - a review</title>
+        <style>
+</style>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.10.2/dist/katex.min.css" integrity="sha384-yFRtMMDnQtDRO8rLpMIKrtPCD5jdktao2TV19YiZYWMDkUR5GQZR/NOVTdquEx1j" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+        <link href="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.css" rel="stylesheet" type="text/css">
+        <style>
+.task-list-item { list-style-type: none; } .task-list-item-checkbox { margin-left: -20px; vertical-align: middle; }
+</style>
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        
+        <script src="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.js"></script>
+        
+    </head>
+    <body class="vscode-light">
+        <h1 id="evaluation-and-expressions-in-python---a-review">Evaluation and expressions in python - a review</h1>
+<p>The notion of an <em>expression</em> is central to the idea of <em>evalution</em>. When a computer program runs, it <em>interprets</em> the expressions that make up the program and returns their values.  An <em>expression</em> is a sequence of <em>symbols</em> and <em>operators</em> that <em>evaluates</em> to a value. Just like algebraic expressions, there are expressions that include logical values (&quot;logical expressions&quot;), and even combination of string, logical and numeric values.</p>
+<p>A <em>variable</em> is a symbol that's evaluated by looking up it's value in memory. You can create a practically limitless variety of variables with assignment statements. A string or number is a literal symbol that &quot;evaluates&quot; to itself. Quotes surround strings that are literals; strings that are not quoted are interpreted as symbols. There are also some ready-made variables; we've seen one numeric variable <code>math.pi</code> in the <code>math</code> package that holds the value of &quot;pi.&quot;</p>
+<p>A <em>function</em> is a symbol--giving the function name--followed by a pair of parentheses containing it's <em>arguments</em>.  There can be zero or more arguments separated by commas. One zero-argument function is <code>quit()</code>. It ends the python session. <code>math.sqrt()</code> takes one argument. <code>pow(,)</code> raises its first argument to the power of it's second argument.</p>
+<p>Evaluating a composite expression happens &quot;from the inside out&quot;, by first evaluating the individual symbols.  Any function whose arguments are symbols can then be evaluated. <em>Operators</em> (e.g. <code>+</code>, <code>-</code>, <code>*</code> and so on) are themselves a kind of function, but they are expressed syntactically by designated symbols rather than a function-symbol followed by a pair of parenthesis surrounding a list of arguments.   Parentheses are also used to indicate which operations to do first; the inside pairs are evaluated first, then their values are passed to the expressions they are enclosed in, the same rules as apply with algebra.</p>
+<h2 id="types">Types</h2>
+<p>Values are categorized into <em>types</em>.   The basic types are <em>integers</em>, <em>floats</em> (floating point numbers), logical values (the <em>boolean</em> values, <code>True</code> and <code>False</code>), <em>strings</em> and <em>characters</em>. (There are many more, to be discussed later.). Each symbol has a type that is stored with it.  Types determine what are valid expressions.  Operators are type-specific.  Operators combine values of the same type, e.g. two integers add to form their sum, and two strings can be concatenated to form a longer string. Sometimes an operator can <em>coerce</em>, that is change, one type to another if there's a natural conversion. The obvious one is converting integer values to their equivalent floating point.</p>
+<p>So what if you <em>re-assign</em> a variable, can it also change the type, or must the type remain unchanged?  In python both can change; this is called <em>dynamic typing</em> unlike <em>strong typing</em> in more formal languages.</p>
+<h2 id="using-the-python-prompt-as-a-calculator">Using the python prompt as a calculator</h2>
+<p>Any expression entered at the python <code>&gt;&gt;&gt;</code> prompt is immediately evaluated.
+You can use this interpreter, more specifically the python &quot;read-eval-print loop&quot; (REPL) as a convenient printing calculator. Additionally you can define variables that can be used as calulator memory. Those variables stay in memory until your quit python.<br>
+(See Section 3.2 on p. 13)</p>
+<p>What if you evaluate a variable, let's say <code>new_var</code> that hasn't been assigned? Such a variable is <em>unbound</em>, and python returns this error message:
+<code>NameError: name 'new_var' is not defined</code>. Clearly the order that you enter things is important!</p>
+<p>When evaluating an expression, even before checking variables, python will check if what you've typed is valid. If it cannot interpret it, it returns <code>SyntaxError: invalid syntax</code>, most often just pointing to a typo you've made.</p>
+<h2 id="exercises">Exercises</h2>
+<ul>
+<li>
+<p><strong>write the solution to the quadratic expression <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><msup><mi>x</mi><mn>2</mn></msup><mo>+</mo><mi>b</mi><mi>x</mi><mo>+</mo><mi>c</mi></mrow><annotation encoding="application/x-tex">ax^2 + bx + c</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.897438em;vertical-align:-0.08333em;"></span><span class="mord mathdefault">a</span><span class="mord"><span class="mord mathdefault">x</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141079999999999em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.77777em;vertical-align:-0.08333em;"></span><span class="mord mathdefault">b</span><span class="mord mathdefault">x</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathdefault">c</span></span></span></span> as two expressions---since there are two possible values it returns.</strong></p>
+</li>
+<li>
+<p>Expressions can get so long that they become unreadable, but, by using variables they can be broken up into readable parts. Here's how to break up a polynomial <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><msup><mi>x</mi><mn>2</mn></msup><mo>+</mo><mi>b</mi><mi>x</mi><mo>+</mo><mi>c</mi></mrow><annotation encoding="application/x-tex">ax^2 + bx +c</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.897438em;vertical-align:-0.08333em;"></span><span class="mord mathdefault">a</span><span class="mord"><span class="mord mathdefault">x</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141079999999999em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.77777em;vertical-align:-0.08333em;"></span><span class="mord mathdefault">b</span><span class="mord mathdefault">x</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathdefault">c</span></span></span></span>:</p>
+<p>a * pow(x, 2) + b * x + c<br>
+is equivalent to</p>
+<p>(a * x + b) * x + c.<br>
+Using an intermediate variable <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>v</mi></mrow><annotation encoding="application/x-tex">v</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathdefault" style="margin-right:0.03588em;">v</span></span></span></span> the same is</p>
+<p>v = a * x + b<br>
+v * x + c<br>
+arguably not much of a saving. But it could be for higher-order polynomials.<br>
+The infinite series for the exponential function is</p>
+<p>1 + x + pow(x,2)/2 + pow(x,3)/(2 * 3) + pow(x,4)/(4 * 3 * 2) + ...<br>
+<strong>For several terms, write this as one expression, then simplify it using intermediate variables.</strong></p>
+</li>
+<li>
+<p>Here are valid expressions that demonsrate combinations of numeric, logical, and string types.  You may need to do a web search for the meaning of some of the functions, e,g, <code>ord()</code>, <code>chr()</code>, etc.  <strong>Work out their value first manually, then check it by evaluating them at the python prompt. Then come up with a few more of your own.</strong></p>
+<ul>
+<li>
+<p>Using numeric inequalities with logical operators</p>
+<p>(math.pi &lt;= 4) and not (math.pi &gt; 4)</p>
+</li>
+<li>
+<p>Converting characters to numbers.</p>
+<p>(ord('A') != (ord('a'))</p>
+</li>
+<li>
+<p>Converting numbers to characters</p>
+<p>'Insert'+chr(32)+'space'</p>
+</li>
+<li>
+<p>Converting logical values to numbers</p>
+<p>int(False) / int(True)</p>
+</li>
+<li>
+<p>Using format strings to convert numbers to strings</p>
+<p>f'X = {round(42.2)}'</p>
+</li>
+<li>
+<p>Testing for substrings returns a logical value</p>
+<p>'yes' in 'yes or no'</p>
+</li>
+<li>
+<p>There's even an <code>eval()</code> function that takes a string and returns its value.</p>
+<p>eval('math.sqrt(2.0)')</p>
+</li>
+</ul>
+</li>
+<li>
+<p><strong>See also the &quot;Try it&quot; exercise on p.14</strong></p>
+</li>
+</ul>
+
+    </body>
+    </html>
