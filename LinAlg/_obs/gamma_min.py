@@ -5,7 +5,6 @@ print(sys.version_info)
 start_x = 1.0
 end_x = 2.0
 
-min_step = 1e-3
 step_size = 0.05
 epsilon = 1e-3
 
@@ -20,7 +19,7 @@ next_x = last_x + step_size
 current_guess = math.gamma(last_x)
 next_guess = math.gamma(next_x)
 
-while still_decreasing(current_guess, next_guess):
+while still_decreasing(current_guess, next_guess) and last_x < end_x:
     last_x = next_x 
     next_x = last_x + step_size
     current_guess = math.gamma(last_x)
