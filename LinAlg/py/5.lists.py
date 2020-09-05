@@ -80,5 +80,5 @@ print('!')
 # Is there a choice of step_size that un-scrambles the sentence? 
 # How would you write a program to find out? 
 
-# Computing phenotypes from genotypes and vice versa
-#     
+# See the assignment about computing phenotypes from genotypes
+# #     

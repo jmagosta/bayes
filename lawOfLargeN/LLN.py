@@ -2,9 +2,18 @@
 # coding: utf-8
 
 # # A visualization of the Law of Large Numbers & Central Limit Theorum
-# To run (Use your local IP as the origin address):
+# To run remotely (Use your local IP as the origin address):
 #
 #  > bokeh serve LLN.py --allow-websocket-origin=192.168.15.100:5006
+# 
+# The remote client runs this in the browser as
+# http://192.168.15.100:5006
+# 
+# To run locally just invoke
+#
+# > bokeh serve LLN.py
+#
+# To kill the process in powershell try cntl-del
 
 import os, re, sys, time
 import math

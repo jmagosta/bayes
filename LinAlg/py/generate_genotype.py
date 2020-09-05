@@ -5,7 +5,7 @@
 import os, sys
 import random
 
-file_name = "genotype.txt"
+file_name = "genotype_Dad.txt"
 hybrid_count = 10
 
 header ='''
