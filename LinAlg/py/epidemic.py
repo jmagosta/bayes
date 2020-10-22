@@ -18,7 +18,15 @@ To run this program:
 
     python epidemic.py R Q [n_days] [time_increment] [output_file]
 
-Assume an initial population of 1000
+where
+
+    R              - is the re-infection rate 
+    Q              - is the cure rate.
+    n_days         - the number of days to run the simulation.
+    time_increment - TBD
+    output_file    - TBD
+
+Population is normalized to fractions adding up to 1. 
 '''
 import math, os, sys
 from pathlib import Path
@@ -108,6 +116,7 @@ if __name__ == '__main__':
     # No command line arguments, just print the documentation
     if number_of_arguments < 2:
         print(__doc__)
+        sys.exit(-1)
     if number_of_arguments >= 2:
         R = float(sys.argv[1])
         Q = float(sys.argv[2])
