@@ -6,7 +6,7 @@ def abs(x):
     if x < 0:
         a = -x
         print(a)
-        if a < 100:
+        if a < -100:
             print('A is super small!')
     else:
         a = x
