@@ -6,7 +6,7 @@
 # # Noisy timeseries patterns
 # A timeseries by minute, with trend, noise, and hourly and daily cycles
 
-import os, sys
+import re, os, sys
 from pathlib import Path
 import math
 from datetime import datetime
@@ -18,7 +18,6 @@ import statsmodels.nonparametric.smoothers_lowess
 # statsmodels.__version__
 
 from bokeh.plotting import figure, save, show, output_file
-from bokeh.io import output_notebook
 index = 0
 MIN_PER_DAY = 24*60
 
@@ -117,7 +116,7 @@ def plt_fit(actual_ts, true_ts):
     p1 = figure(width=800, height=300, tools=TOOLS)
     p1.scatter(actual_ts[:,0], actual_ts[:,1], color='grey', size=1.0,alpha=0.4)
     p1.line(true_ts[:,0], true_ts[:,1], line_color = 'Black')
-    show(p1)
+    save(p1)
 
 def wr_ts(actual_ts, true_ts, save_csv_file):
     # Create a two column csv file with header minutes = 0..1399, cpuload > 0 from a np array.
@@ -139,6 +138,9 @@ if __name__ == "__main__":
     pattern = noisyTraffic(p)
     pattern.assembleComponents(p)
     #print(pattern.pattern)
+    plot_filename = re.sub('.py$', '_graph.html', Path(__file__).name)
+    output_file(filename= plot_filename, title='Plot')
     plt_fit(pattern.pattern, pattern.true_signal)
+    print(f'Plot saved to {plot_filename}')
     wr_ts(pattern.pattern, pattern.true_signal, pattern.save_csv_file)
 
