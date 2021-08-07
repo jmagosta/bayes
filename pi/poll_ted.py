@@ -12,7 +12,7 @@ Usage:
 % python poll_ted.py [-v] interval [repetitions]
 
 """
-from __future__ import division
+#from __future__ import division
 import pickle, os, os.path, sys, subprocess
 import pprint, re, string, time
 import urllib3
