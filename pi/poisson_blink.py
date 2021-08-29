@@ -16,11 +16,11 @@ gpio.setmode(gpio.BOARD)
 gpio.setup(pin, gpio.OUT, initial=gpio.LOW)
 
 while True:
-    rexp =  min(100, expovariate(0.08))
+    rexp =  min(100, expovariate(0.4))
     print('    ', rexp,  file=sys.stderr)
     gpio.output(pin, gpio.HIGH)
     sleep(rexp)
-    hexp = min(100, expovariate(2.1))
+    hexp = min(100, expovariate(1.1))
     print(hexp, file=sys.stderr)
     gpio.output(pin, gpio.LOW)
     sleep(hexp)
