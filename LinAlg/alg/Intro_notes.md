@@ -14,6 +14,18 @@ Solving by Gaussian elimination is equivalent to decomposing a matrix by `LU` de
 
 Here's an example of a set of linear equations, called the _Barnyard_ problem. 
 
+## Matrix multiplication and inverses
+
+Using Gaussian - Jordan to compute an inverse. Continue elimination to remove the non-zero elements in the upper entries of the U matrix. (Does that mean that L becomes. 
+
+`Invertable` or `non-Singular` matrici
+
+What about the non-invertable matrix - why does it not have an invese? Why is $A A^{-1} = I$ not possible? 
+
+- One can't get all columns of the I matrix from combination of a singular A. 
+- Alternately one can find a non-zero $x$ s.t.  $Ax = 0$  
+  But  $A^{-1} A x = 0$ => $x = 0$
+
 ## Intro - vectors and linearity
 
 Our starting point is the properties of a linear transform in a vector space, to show that matrix multiplication just derives from these properties. 
