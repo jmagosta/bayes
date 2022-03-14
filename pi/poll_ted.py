@@ -21,7 +21,7 @@ import urllib3
 dbg      = False
 poll     = True
 
-uri_ip = '192.168.4.24'
+uri_ip = '192.168.4.20'
 uri_path = '/history/'
 uri_suffix = 'history.xml'
 uri_args = '?MTU=0&COUNT=2&INDEX=10'
