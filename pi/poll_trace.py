@@ -4,12 +4,13 @@
 
 import pickle, os, os.path, sys, subprocess
 import pprint, re, string, time
+from pathlib import Path
 import subprocess
 import datetime
 
 PING_TARGET = '8.8.8.8'
 TRACEROUTE_TARGET = 'be-232-rar01.santaclara.ca.sfba.comcast.net'
-
+LOG_FILE_PATH = '/media/pi/Elements/netlog'
 dbg      = False
 
 
@@ -42,26 +43,33 @@ def iterate_traceroute(target):
     
 def run_monitors(ptarget=PING_TARGET, ttarget=TRACEROUTE_TARGET ):
     millisec_responses = {}
+    trace_summary = ''
     ping_start = time.time()
     m = iterate_monitors(ptarget)
     ping_end =  time.time()
     ping_runtime = 1000 * (ping_end - ping_start)
     tr = iterate_traceroute(ttarget)
     trace_runtime = 1000 * (time.time() - ping_end)
-    ping_summary = m[0][-1]
-    trace_summary = tr[0][-1]
-    ping_duration = re.split(r'/',ping_summary)
-    trace_duration = re.split(r'\s+ms', trace_summary)
-    if len(ping_duration) > 1:
+    # print('m', m)
+    if len(m[0]) > 0 and len(tr[0]) > 0:
+        ping_summary = m[0][-1]
+        ping_duration = re.split(r'/',ping_summary)
+        trace_summary = tr[0][-1]
+        trace_duration = re.split(r'\s+ms', trace_summary)
         millisec_responses = dict(ping_runtime = f'{ping_runtime:.3f}',
-                                  ping_duration = ping_duration[-2],
+                                  ping_duration = ping_duration[-2] if len(ping_duration) >1 else 'NaN',
                                   trace_runtime = f'{trace_runtime:.3f}',
                                   trace_duration = trace_duration[-2].strip())
+    else:
+        millisec_responses['msg'] = m[1] if len(m) >0 else 'ping failed'
     millisec_responses['time_stamp'] = re.sub(' ', '_', datetime.datetime.now().isoformat())
     return millisec_responses
 
 if __name__ == '__main__':
 
-    print(run_monitors())
-
-    
+    if dbg:
+        print(run_monitors())
+    else:
+        with open(Path(LOG_FILE_PATH) / Path('poll_trace'), 'a') as log_fd:
+            print(run_monitors(), file= log_fd)
+            
