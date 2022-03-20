@@ -47,7 +47,7 @@ def is_intermittent(responses):
     bad_pr = float(responses['ping_runtime']) > 50
     bad_pd = float(responses['ping_duration']) > 30
     bad_tr = float(responses['trace_runtime']) > 500
-    bad_td = float(responses['trace_duration']) > 30
+    bad_td = float(responses['trace_duration']) > 0
     return bad_pr or bad_pd or bad_tr or bad_td
 
 ##############################################################
@@ -68,9 +68,9 @@ def run_monitors(ptarget=PING_TARGET, ttarget=TRACEROUTE_TARGET ):
         ping_duration = re.split(r'/',ping_summary)
         trace_summary = tr[0][-1]
         trace_duration = re.split(r'\s+ms', trace_summary)
-        millisec_responses = dict(ping_runtime = f'{ping_runtime:.3f}',
+        millisec_responses = dict(ping_runtime = '{ping_runtime:.3f}'.format(ping_runtime=ping_runtime),
                                   ping_duration = ping_duration[-2] if len(ping_duration) >1 else 'NaN',
-                                  trace_runtime = f'{trace_runtime:.3f}',
+                                  trace_runtime = '{trace_runtime:.3f}'.format(trace_runtime=trace_runtime),
                                   trace_duration = trace_duration[-2].strip())
         bad_network = is_intermittent(millisec_responses)
     else:
@@ -81,6 +81,7 @@ def run_monitors(ptarget=PING_TARGET, ttarget=TRACEROUTE_TARGET ):
         b.on()
     else:
         b.off()
+        # b.cleanup()
     return millisec_responses
 
 if __name__ == '__main__':
@@ -88,6 +89,6 @@ if __name__ == '__main__':
     if dbg:
         print(run_monitors())
     else:
-        with open(Path(LOG_FILE_PATH) / Path('poll_trace'), 'a') as log_fd:
+        with open(LOG_FILE_PATH+'/poll_trace', 'a') as log_fd:
             print(run_monitors(), file= log_fd)
             

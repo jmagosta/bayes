@@ -23,6 +23,9 @@ class Blink (object):
     def off(self):
         gpio.output(self.pin, gpio.LOW)
 
+    def cleanup(self):
+        gpio.cleanup()
+
 if __name__ == '__main__':
     b = Blink()
     while True:
