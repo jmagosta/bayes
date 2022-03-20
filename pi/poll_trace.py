@@ -7,6 +7,7 @@ import pprint, re, string, time
 from pathlib import Path
 import subprocess
 import datetime
+from blinker import Blink
 
 PING_TARGET = '8.8.8.8'
 TRACEROUTE_TARGET = 'be-232-rar01.santaclara.ca.sfba.comcast.net'
@@ -40,7 +41,16 @@ def iterate_traceroute(target):
         print('err: ',proc_err)
     return [proc_out, proc_err]
 
-    
+##############################################################
+def is_intermittent(responses):
+    'Did the test indicate bad network performance'
+    bad_pr = float(responses['ping_runtime']) > 50
+    bad_pd = float(responses['ping_duration']) > 30
+    bad_tr = float(responses['trace_runtime']) > 500
+    bad_td = float(responses['trace_duration']) > 30
+    return bad_pr or bad_pd or bad_tr or bad_td
+
+##############################################################
 def run_monitors(ptarget=PING_TARGET, ttarget=TRACEROUTE_TARGET ):
     millisec_responses = {}
     trace_summary = ''
@@ -50,6 +60,8 @@ def run_monitors(ptarget=PING_TARGET, ttarget=TRACEROUTE_TARGET ):
     ping_runtime = 1000 * (ping_end - ping_start)
     tr = iterate_traceroute(ttarget)
     trace_runtime = 1000 * (time.time() - ping_end)
+    b= Blink()
+    bad_network = False 
     # print('m', m)
     if len(m[0]) > 0 and len(tr[0]) > 0:
         ping_summary = m[0][-1]
@@ -60,9 +72,15 @@ def run_monitors(ptarget=PING_TARGET, ttarget=TRACEROUTE_TARGET ):
                                   ping_duration = ping_duration[-2] if len(ping_duration) >1 else 'NaN',
                                   trace_runtime = f'{trace_runtime:.3f}',
                                   trace_duration = trace_duration[-2].strip())
+        bad_network = is_intermittent(millisec_responses)
     else:
         millisec_responses['msg'] = m[1] if len(m) >0 else 'ping failed'
+        bad_network = True
     millisec_responses['time_stamp'] = re.sub(' ', '_', datetime.datetime.now().isoformat())
+    if bad_network:
+        b.on()
+    else:
+        b.off()
     return millisec_responses
 
 if __name__ == '__main__':

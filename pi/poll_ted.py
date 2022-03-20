@@ -1,3 +1,4 @@
+
 #!/usr/bin/python
 # 14 Oct 2013  JMA
 # poll_ted.py
