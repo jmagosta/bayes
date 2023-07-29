@@ -1,0 +1,265 @@
+A SIMPLIFIED LIST OF PYTHON SYSTEM CALLS
+
+____________
+os
+
+os.environ
+    A dict with the shell env variables, e.g., os.environ['HOME'], read at startup time.
+os.getenv(varname[, value])
+    Return the value of the environment variable varname if it exists, or value if it doens't. 
+
+
+os.chdir(path)
+os.fchdir(fd)
+os.getcwd()
+os.getcwdu()                                  Path.cwd()
+    Return a Unicode object representing the current working directory.
+
+os.listdir(path)                              Path(path).iterdir()
+    Return a list containing the names of the entries in the directory given by path. 
+    See also glob.glob()                      Path(path).glob(pattern)   
+                                                              pattern_for_all_python_files = '**/*.py'
+
+os.makedirs(path[, mode])                     Path(path).makedir()
+    Recursive directory creation function. Like mkdir(), but makes all intermediate-level 
+    directories needed to contain the leaf directory.
+
+os.tempnam([dir[, prefix]])
+    Return a unique path name that is reasonable for creating a temporary file. This will be an absolute path that names a potential directory entry in the directory dir.
+
+os.tmpfile()
+    Return a new file object opened in update mode (w+b). 
+
+os.walk(top[, topdown=True[, onerror=None[, followlinks=False]]])
+    Generate the file names in a directory tree by walking the tree
+    either top-down or bottom-up. For each directory in the tree
+    rooted at directory top (including top itself), it yields a
+    3-tuple (dirpath, dirnames, filenames).
+
+________
+os.system(command)
+    Execute the command (a string) in a subshell. The subprocess module is preferrable 
+    to using this function, and for all process & forking operations. 
+    Use subprocess.check_call() instead of os.system().
+
+
+________
+IO 
+
+with open(filename, 'wb') as out_fd:
+    out_fd.write(..)
+
+Path(path).open()
+    Use this instead of the open() primitive
+
+Path.read_text()
+
+Path.write_text(data, ..)
+
+________
+os.path - obsoleted by pathlib
+
+os.path.abspath(path)                    Path(path).absolute()   or Path(path).resolve() 
+    Return a normalized absolutized version of the pathname path. 
+    On most platforms, this is equivalent to 
+    normpath(join(os.getcwd(), path)).
+
+os.path.exists(path)                     Path(path).exists()
+    Return True if path refers to an existing path.
+
+os.path.isdir(path)                     Path(path).is_dir()
+    Return True if path is an existing directory. 
+
+os.path.join(path1[, path2[, ...]])     Path(x) / Path(y) / ...
+    Join one or more path components intelligently. If any component is 
+    an absolute path, all previous components are thrown away. The inverse
+    of os.path.split(path).
+
+os.path.normpath(path) 
+    Normalize a pathname. This collapses redundant
+    separators and up-level references so that A//B, A/./B and
+    A/foo/../B all become A/B.
+
+os.path.split(path)                      use Path.parent()  and Path.name()
+    Split the pathname path into a pair, (head, tail)
+    where tail is the last pathname component and head is everything
+    leading up to that. The tail part will never contain a slash.
+
+os.path.splitext(path)                    PurePath.stem() and PurePath.suffix()
+    Split the pathname path into a pair (root, ext). ext is empty or begins 
+    with a period unless path begins with a period.
+
+
+___________
+re
+
+re.match(pattern, string, flags=0)
+re.search(pattern, string, flags=0)
+    Scan through string looking for a location and if the regular expression pattern produces 
+    a match, return a match object, otherwise None.  re.match() looks for a match starting with
+    the beginning of the string.
+
+re.split(pattern, string, maxsplit=0, flags=0)
+    Split string by the occurrences of pattern.
+
+re.findall(pattern, string, flags=0)
+    Return all non-overlapping matches of pattern in string, as a list of strings, as an iterable.
+
+re.sub(pattern, repl, string, count=0, flags=0)
+    Return the string obtained by replacing the leftmost non-overlapping occurrences
+    of pattern in string by the replacement repl.
+
+___________
+string methods
+
+'sub' in 'substring'
+    Use the in opeartor to check if sub is a substring or not.
+
+str.count(sub[, start[, end]])
+    Return the number of non-overlapping occurrences of substring sub in the range [start, end]. 
+
+str.find(sub[, start[, end]])
+    Return the lowest index in the string where substring sub is found. Similarly str.rfind(...).
+
+str.join(iterable)
+    Return a string which is the concatenation of the strings in the iterable str.
+    The separator between elements is the string providing this method.
+
+str.replace(old, new) 
+    Replace all non-overlapping occcurences of "old" string with "new"
+
+the_str.split(separator_string)
+	Return a list partitioning the_str as delimited by
+	separator_string.  If separator_string is None, partition on
+	runs of whitespace. 
+
+the_str.partition(separator_string)
+    Like split() but returns just one split, with the separator string included.
+___________
+sys
+
+sys.argv
+    The list of command line arguments passed to a Python script.
+
+sys.exc_info()
+    This function returns a tuple of three values, (type, value, traceback) that give 
+    information about the current exception.
+
+sys.path
+    A list of strings that specifies the search path for modules.
+
+sys.stdin
+sys.stdout
+sys.stderr
+    File objects corresponding to the interpreter’s standard input, output and error streams. 
+    sys.__stdin__ etc contain the immutable, original values. 
+    
+sys.maxint, sys.minint
+	system specific minimum and maximum values. 
+
+___________
+time
+
+time.asctime()
+    Localtime as a string, e.g. 'Tue Sep  4 11:11:46 2012'
+    
+time.asctime(time.localtime(ts))
+	Localtime from unix epoch float, ts. 
+
+time.strftime('%b-%d-%Y_%H-%M-%S')
+    Specify how to format the local time,  e.g. 'Sep-04-2012_11-19-49'
+    Unique day-hour-min-sec:    time.strftime( '%j-%H-%M-%S')  -> '284-14-16-25'
+    
+time.time()
+	Returns the unix epoch floating point representation. 
+	Equivalent to time.localtime()
+
+from datetime import datetime
+datetime.fromtimestamp(time.time())
+    or
+datetime.utcfromtimestamp(...)
+    Convert to a datetime object
+
+datetime.fromisoformat('2020-01-01 10:10:10')
+    Return a datetime object. 
+
+datetime.strptime('2020-01-01, '%Y-%m-%d')
+    Return a datetime object.
+
+dt_object.strftime('%Y-%m-%d %H %M %S')
+    Return a formatted string for the object.
+
+current_dt = datetime.now()
+    The current date time as a datetime object.
+
+______________
+Control statements
+
+try:
+    < code >
+except ValueError as e:   # Could also be a tuple of errors
+    print(e, ..)
+except:                   # catches all errors  
+
+except Exception as e:    # Also catches all errors
+
+
+ternary opeartor
+(x if <logical> else y)
+
+___________
+BUILT-IN TYPES
+
+dicts 
+-----
+
+	Initializers
+d = {}
+d = dict(k1 = 'v1', k2=23)
+d = dict(zip(list1, list2))
+	or for any keys, not just valid python identifiers
+d = dict({'%k1': 'v1', ' =': 'v2'})
+
+len(d) 
+
+key in d
+key not in d
+	Returns boolean for key membership, or its negation
+	
+del d['k1']
+	Remove entry for 'k1'
+	
+d.get('k1', 'default')
+	An alternative to d['k1'] that always returns a valid value
+	
+d.keys(), d.values, d.items()  
+	Iterators. Note the "iter" equivalents were removed in python 3
+
+    Create a list of keys
+[*ds]  == list(ds.keys())  is True
+
+    Merge two dicts, also use this idiom to copy a dict : {**d}
+{**d1, **d2}
+
+    Create a set from dict keys
+{*ds}  == set(ds.keys())
+________
+CMD LINE OPTIONS - snippet
+
+import argparse
+
+parser = argparse.ArgumentParser(
+                    prog = sys.argv[0],
+                    description = 'What the program does')
+
+parser.add_argument('filename',
+                    default='output.txt',
+                    help='output file')   # positional argument
+parser.add_argument('-c', '--count',
+                    type=int)            # option that takes a numeric value
+parser.add_argument('-v', '--verbose',
+                    action='store_true')  # on/off flag
+
+args = parser.parse_args()
+# values can be found in a named tuple: args.filename, args.count, args.verbose
+	
