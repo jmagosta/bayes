@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/local/bin/python3
 # July 2023  JMA
 # gaussian_elimination.py  Style file for python modules
 '''
@@ -78,19 +78,28 @@ class Ctemplate (object):
             sys.exit(-1)
         out_fd.close()
 
+###############################################################################
+def x(args):
+
+    # Gassian elimination on a singular matrix
+    A = np.array([[3,2,4],[1,2,2], [1,0,1]])
+    b = np.transpose(np.array([[0,0,0]]))
+    ## Run 
 
 ########################################################################
 def is_full_rank(the_m, d):
     return np.linalg.matrix_rank(the_m) == d
 
 def random_ar(r,c):
-    ar = np.reshape( np.array(np.random.choice(range(AR_MIN, AR_MAX), r*c, replace=True)), (r, c))
+    ar = np.reshape( np.array(np.random.choice(range(AR_MIN, AR_MAX+1), r*c, replace=True)), (r, c))
     # Check if not full rank
+    if not is_full_rank(ar, min(r,c)):
+        print(f'Matrix {r},{c} is not full rank.')
     return ar
 
 def random_symmetric_ar(d):
-    diagonal = np.random.choice(range(AR_MIN, AR_MAX), d, replace=True) 
-    off_diagonal = list(np.random.choice(range(AR_MIN, AR_MAX), int(0.5 * d * (d-1)), replace=True) - round(d/2) )   # Yes the count is always an integer
+    diagonal = np.random.choice(range(AR_MIN, AR_MAX+1), d, replace=True) 
+    off_diagonal = list(np.random.choice(range(AR_MIN, AR_MAX+1), int(0.5 * d * (d-1)), replace=True))   # Yes the count is always an integer
     # Clever way to fill the matrix?  Iterate thru the off diagonal lower matrix and pop the off diagnozal elements
     ar = np.zeros((d,d))
     # Set the lower off diagonal, then use the transpose to create the upper
@@ -102,14 +111,17 @@ def random_symmetric_ar(d):
     for k in range(d):
         ar[k,k]  = diagonal[k]
     # Check if not full rank
+    if not is_full_rank(ar, d):
+        print('Symmetric matrix is not full rank.')
     return ar
 
 ########################################################################
 def set_limits():
     'Query the user for random digit limits'
+    global AR_MAX, AR_MIN
     print(Fore.CYAN)
     limit = input('min, max? ')
-    limits = re.findall(r'(\d+)', limit)
+    limits = re.findall(r'(-?\d+)', limit)
     AR_MAX = int(limits[1])
     AR_MIN = int(limits[0])
     print(Fore.RESET)
@@ -146,13 +158,6 @@ def command_loop(args):
             print(np.round(U,2))
 
 
-###############################################################################
-def main(args):
-
-    # Gassian elimination on a singular matrix
-    A = np.array([[3,2,4],[1,2,2], [1,0,1]])
-    b = np.transpose(np.array([[0,0,0]]))
-    ## Run 
 
 ########################################################################
 if __name__ == '__main__':
