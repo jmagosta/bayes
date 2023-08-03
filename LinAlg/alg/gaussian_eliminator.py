@@ -1,11 +1,11 @@
 #!/usr/local/bin/python3
 # July 2023  JMA
-# gaussian_elimination.py  Style file for python modules
+# gaussian_eliminator.py 
 '''
-Write a short description of what the program does here. 
+An interactive demonstration of Gaussian elimination
 
 Usage:
-$ ./template.py [-v] [-l config_dir] [-o output_directory] input_file.csv
+$ ./gaussian_eliminator.py
 ''' 
 
 
@@ -32,59 +32,20 @@ AR_MIN = 0
 AR_MAX = 4
 
 INTRO_PROMPT = '''
+Welcome to the Gaussian elimination solver! 
+
 This program runs a read-eval-print loop
 where you specify the dimensions of a random matrix. It creates
 the matrix, then computes its LU decomposition matrici.
 
-The prompt accepts two integers, the number of rows and columns.
-If you just give one integer it creates a symmetric matrix.'''
+First it asks you for the minimum and maximum value for the random
+matrix elements.  Then you enter the loop where it prompts you 
+for the matrix dimensions. The prompt accepts two integers, 
+the number of rows and columns. If you just give one integer 
+it creates a symmetric matrix. Just hit return to end the program. 
 
-########################################################################
-class Ctemplate (object):
-    'Module names and class names can be the same.'
-
-    def __init__(self):
-        self.input = None
-
-    def rd_matrix(self, mat_file):
-        'Input a tab-delimited integer file'
-        try:
-            with open(mat_file, 'rb') as fd:
-                mat = pd.read_csv(fd, delimiter='\t')
-        except Exception as e:
-            print >> sys.stderr, 'Failed to read ', e, mat_file
-            sys.exit(-1)
-        self.input = mat
-
-    def process(self):
-        'Null operation'
-        self.output = self.input
-
-    def wr_header(self, fd, args):
-            fd.write('# ' + '\t'.join(sys.argv) + '\n')
-            host = re.sub('\n', '', subprocess.check_output('hostname'))
-            user = os.environ['USER']
-            date = time.asctime()
-            fd.write('# ' + host+ '\t'+ user+ '\t'+ date + '\n')
-        
-    def wr_matrix(self, output_fn):
-        try:
-            out_fd = open(output_fn, 'wb')
-            self.wr_header(out_fd, sys.argv)
-            np.savetxt(out_fd, self.output, delimiter='\t', fmt='%8d')
-        except Exception as e:
-            print >> sys.stderr, 'Failed to write ', e, output_fn
-            # out_fd.close()
-            sys.exit(-1)
-        out_fd.close()
-
-###############################################################################
-def x(args):
-
-    # Gassian elimination on a singular matrix
-    A = np.array([[3,2,4],[1,2,2], [1,0,1]])
-    b = np.transpose(np.array([[0,0,0]]))
-    ## Run 
+Also, if the random matrix turns out to not be full rank, it will tell you.
+'''
 
 ########################################################################
 def is_full_rank(the_m, d):
@@ -94,7 +55,7 @@ def random_ar(r,c):
     ar = np.reshape( np.array(np.random.choice(range(AR_MIN, AR_MAX+1), r*c, replace=True)), (r, c))
     # Check if not full rank
     if not is_full_rank(ar, min(r,c)):
-        print(f'Matrix {r},{c} is not full rank.')
+        print(f'This matrix {r},{c} is not full rank.')
     return ar
 
 def random_symmetric_ar(d):
@@ -112,7 +73,7 @@ def random_symmetric_ar(d):
         ar[k,k]  = diagonal[k]
     # Check if not full rank
     if not is_full_rank(ar, d):
-        print('Symmetric matrix is not full rank.')
+        print('This symmetric matrix is not full rank.')
     return ar
 
 ########################################################################
@@ -131,17 +92,17 @@ def command_loop(args):
     end_session = False
     while not end_session:
         print(Fore.RESET)
-        response = input('\n    ')
+        response = input('\nDimensions? ')
         # parse input. 
         if len(response) == 0: 
-            # end_session = True
+            print("Goodbye!\n")
             break
-        elif len(response)  < 2:
-            ar = random_symmetric_ar(int(response))
+        responses = [int(z) for z in re.findall(r'(\d+)', response)]
+        if len(responses)  < 2:
+            ar = random_symmetric_ar(responses[0])
             print(Fore.CYAN)
             print(ar)
         else:
-            responses = re.findall(r'(\d+)', response)
             ar = random_ar(int(responses[0]), int(responses[1]))
             print(Fore.CYAN)
             print(ar)
