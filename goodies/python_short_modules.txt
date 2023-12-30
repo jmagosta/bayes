@@ -9,10 +9,10 @@ os.getenv(varname[, value])
     Return the value of the environment variable varname if it exists, or value if it doens't. 
 
 
-os.chdir(path)
-os.fchdir(fd)
-os.getcwd()
-os.getcwdu()                                  Path.cwd()
+os.chdir(path) - change working directory
+os.fchdir(fd)  - takes a directory file descriptor.
+os.getcwd()    - return working directory             replaced by Path.cwd()
+os.getcwdu()
     Return a Unicode object representing the current working directory.
 
 os.listdir(path)                              Path(path).iterdir()
@@ -91,6 +91,15 @@ os.path.splitext(path)                    PurePath.stem() and PurePath.suffix()
 
 
 ___________
+random
+
+random.random()
+    One float between [0, 1.0)].
+
+random.sample(seq, return_length)
+    A list of a permutation of seq. Works for seq of len less than 2000. 
+    For sampling with replacement use random.choices()
+___________
 re
 
 re.match(pattern, string, flags=0)
@@ -113,7 +122,7 @@ ___________
 string methods
 
 'sub' in 'substring'
-    Use the in opeartor to check if sub is a substring or not.
+    Use the in operator to check if sub is a substring or not.
 
 str.count(sub[, start[, end]])
     Return the number of non-overlapping occurrences of substring sub in the range [start, end]. 
@@ -121,21 +130,30 @@ str.count(sub[, start[, end]])
 str.find(sub[, start[, end]])
     Return the lowest index in the string where substring sub is found. Similarly str.rfind(...).
 
+str.replace(old, new, count)
+    Replace occurences of "old" with "new", optionally for "count" times.
+    Return the modified string. (Non-destructive - str is immutable.) 
+    Does _not_ accept reg ex.s.  See re.sub()
+
 str.join(iterable)
     Return a string which is the concatenation of the strings in the iterable str.
-    The separator between elements is the string providing this method.
+    The separator between elements is the string providing this
+    method. If the separator is '', then just concatenate the list.
+    The inverse operation, split a string into a list of characters is
+list(str)
+    Useful to treat a string as a mutable vector.
 
-str.replace(old, new) 
-    Replace all non-overlapping occcurences of "old" string with "new"
-
-the_str.split(separator_string)
-	Return a list partitioning the_str as delimited by
+str.split(separator_string)
+	Return a list partitioning str as delimited by
 	separator_string.  If separator_string is None, partition on
-	runs of whitespace. 
+	runs of whitespace. ''.join(iterable) is the inverse. 
 
 the_str.partition(separator_string)
     Like split() but returns just one split, with the separator string included.
-___________
+
+str.[lr]strip()  
+    Remove leading and/or trailing whitespace, including line endings. 
+    ___________
 sys
 
 sys.argv
@@ -162,6 +180,9 @@ time
 
 time.asctime()
     Localtime as a string, e.g. 'Tue Sep  4 11:11:46 2012'
+
+time.asctime(time.gmtime())
+    UTC time as a string.
     
 time.asctime(time.localtime(ts))
 	Localtime from unix epoch float, ts. 
@@ -174,7 +195,23 @@ time.time()
 	Returns the unix epoch floating point representation. 
 	Equivalent to time.localtime()
 
+___________
+datetime
+
 from datetime import datetime
+
+datetime.ctime()
+    Returns a formatted string like "Tue Sep 24 17:36:07 2012"
+
+datetime.datetime(year=2020, month=2, day=29)
+    Create a datetime object.
+
+datetime.date.today().isoformat()
+'2020-05-22'
+datetime.datetime.now().isoformat()
+'2020-05-22T09:38:58.818106'
+    Convenient ways to get a formatted string. 
+
 datetime.fromtimestamp(time.time())
     or
 datetime.utcfromtimestamp(...)
@@ -204,21 +241,66 @@ except:                   # catches all errors
 except Exception as e:    # Also catches all errors
 
 
-ternary opeartor
+ternary operator
 (x if <logical> else y)
 
 ___________
 BUILT-IN TYPES
 
+lists
+-----
+
+v[:]
+    Create a shallow copy of list v. 
+
+v = n*[ None ]
+    Create a vector of 'None', of length n.
+
+v.index('x')
+    The index where x appears in v
+
+v.remove('x')
+    Destructively remove the first occurrence of 'x' in the vector.
+    Equivalent to del v[v.index('x')]
+
+del v[1]
+    Destructively remove the element v[1].  
+
+v.sort()
+    Destructive sort.
+
+sorted(v)
+    Return a sorted list of v's elements.
+
+sets 
+-----
+
+set(string.digits)
+    Set constructor.  Note this gives a set of chars for 0:9
+
+{"item1", 6, (0,1), None}
+    Shorthand for creating a set. Note items must be hashable (e.g. immutable)
+
+{ord(k) for k in string.whitespace}
+    Set comprehensions work!
+
 dicts 
 -----
 
 	Initializers
-d = {}
-d = dict(k1 = 'v1', k2=23)
-d = dict(zip(list1, list2))
-	or for any keys, not just valid python identifiers
-d = dict({'%k1': 'v1', ' =': 'v2'})
+d = {'k1:'v1', 'k2':23}
+d = dict(k1='v1', k2=23)
+d = dict(('k1', 'v1), ('k2', 23))
+
+    Iterators
+d.keys(),  indexes.  list(d) returns a list of d.keys()
+d.values() values  (in some order? )
+d.items()  tuples of (key value) pairs
+
+Note: d.iterkeys(), d.itervalues, d.iteritems()  are obsolete
+
+or for any keys, not just valid python identifiers:
+d = {'%k1': 'v1', ' =': 'v2'}
 
 len(d) 
 

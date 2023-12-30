@@ -1,0 +1,72 @@
+CREATE A SINGLE PLOT 
+
+%matplotlib inline
+import matplotlib.pyplot as plt
+
+# compute range for plotting
+axis_range = [-0.1,1.1,-0.1,1.1]          # xmin, xmax, ymin, ymax
+
+plt.figure()
+plt.plot(y, 'o', label='$y_i$')             # circles
+plt.plot(x, 'g+-', linewidth=3, label='$x_i$')           # green line and crosses
+plt.xlabel('$x$: independent variable')
+plt.ylabel('$y$: response variable')
+plt.axis(axis_range)
+plt.title('$rho=$')
+plt.legend(frameon=False)                 # Hide box around the legend
+
+----------
+Other plot types 
+
+plt.hist(exp_pts, density=True, bins=50)
+plt.step(digit_histogram.index, digit_histogram.values)
+
+
+----------
+Multiple vertical stacked plots 
+
+fig, ax = plt.subplots(3,1, figsize= (20,10))
+
+ax[0].vlines(events_process.event_times, 0 , 5*events_process.item_cnts, alpha=0.5)
+for pt in events_process.itertuples():  #sadly ax.text does not take vector coordinates as args. 
+    ax[0].text(pt.event_times, 5*pt.item_cnts, str(pt.item_cnts), color='purple', horizontalalignment= 'center')
+
+ax[1].plot(binned_process.event_times, binned_process.item_cnts, '*')
+
+ax[2].plot(binned_counts_ev.index, binned_counts_ev.item_cnts, '*', color = 'red')
+
+for k in range(3):
+    ax[k].grid()
+plt.show()
+
+----------
+3D plot
+
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+
+fig = plt.figure()
+ax = fig.gca(projection='3d')
+
+# Plot the surface.
+surf = ax.plot_surface(M, B, Z, cmap=cm.coolwarm)
+
+plt.xlabel('slope variable $m$')
+plt.ylabel('intercept variable $b$')
+# Add a color bar which maps values to colors.
+fig.colorbar(surf)
+plt.title('least-squares objective function')
+#plt.savefig('fig/1d-fit-ls3d.pdf')
+plt.show()
+
+---------
+# generate contour plot
+
+plt.figure()
+contour_levels = np.arange(0.3,3,0.1)
+CS = plt.contour(M, B, Z,levels=contour_levels)
+plt.clabel(CS, inline=1, fontsize=10)
+plt.title('contours of least-squares objective function')
+
+plt.xlabel('slope variable $m$')
+plt.ylabel('intercept variable $b$')
