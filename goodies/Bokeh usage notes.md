@@ -17,7 +17,7 @@ For more examples https://github.com/bokeh/bokeh/tree/master/examples
 ## tl;dr
 
     def qplot(x,y,c='red'):
-        p = figure(plot_width = 1000, plot_height = 300)
+        p = figure(width = 1000, height = 300, x_range=(0,1))
         p.line(x=x, y=y, line_color=c)
         return p
 
@@ -51,6 +51,16 @@ or
 
     source = ColumnDataSource(dict(x=[..], y=[..], color=['#dddddd', 'blue', ..]))
 
+to see it's contents:
+
+    source.data.keys()
+
+or update it's contents:
+
+    source.data = dict(<key>, <value>)
+
+### graphic objects
+
     p.line(x='x', y='y', color='color', source=source, 
             line_color="black", line_width=1, alpha=1.0, line_dash = 'dotdash', legend_label="Data")
 
@@ -65,7 +75,15 @@ But more generally to place a defined shape on an x,y plot Bokeh has several doz
 
     p.scatter(x, y, marker="dot", size=15,
               line_color="navy", fill_color="orange", alpha=0.5)
-    
+
+Markers can also be a data type in a ColumnDataSource
+
+    source.data['markers'] = ["circle", "square", "circle", ... ]
+    glyph = Scatter(..., marker="markers")
+    p.add_glyph(source, glyph)
+
+<img src="./bokeh_markers.png" width=280>
+
 For legends,
 
     p.legend.location = "center_right"  # Assume there's a default if no properties are set.
@@ -133,6 +151,16 @@ or
     a_figure.quad(bottom=0, left=bin_edges[:-1], right=bin_edges[1:], top=hhist, **LINE_ARGS)
 
 where `len(hhist) = bins` and `len(bin_edges) = bins+1`
+
+or use Vbar glyphs.  Note, for a categorical axis, pass a list of enumerations to figure()
+
+    categories = ['apple', 'banana', 'cherry']
+    y = [12, 4, 7]
+    p = figure(x_range = categories)
+    glyph = VBar(x=categories, top=y, bottom=0, width=1, line_width=0)
+    p.add_glyph(cds, glyph)
+
+
 
 ## Multiple objects in one graphic
 
