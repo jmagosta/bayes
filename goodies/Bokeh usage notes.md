@@ -9,7 +9,7 @@ For more examples https://github.com/bokeh/bokeh/tree/master/examples
 
     from bokeh.plotting import figure, show, save
     from bokeh.layouts import column
-    from bokeh.models import ColumnDataSource, FixedTicker, MultiLine, Grid, Plot, LinearAxis
+    from bokeh.models import ColumnDataSource, FixedTicker, MultiLine, Grid, Plot, LinearAxis, Legend, Span, VBar,
     from bokeh.io import output_notebook
     from bokeh import palettes
     output_notebook()
@@ -144,7 +144,7 @@ or
 
 ## Histograms
 
-    hhist, bin_edges = np.histogram(x, bins=10, density=False)
+    hhist, bin_edges = np.histogram(x, bins=bin_ct, density=False)
     # A cute way to pass shared args
     LINE_ARGS = dict(color='white', line_color='black')
     # Define the sides of each "box" in the histogram plot
@@ -152,7 +152,14 @@ or
 
 where `len(hhist) = bins` and `len(bin_edges) = bins+1`
 
-or use Vbar glyphs.  Note, for a categorical axis, pass a list of enumerations to figure()
+or use Vbar glyphs.
+
+    normal_hist_df = pd.DataFrame(dict(density= hhist, rv= bin_edges[:-1]))
+    hist_src = ColumnDataSource(normal_hist_df)
+    glyph = VBar(x='rv', top='density', bottom=0, width=(bin_edges[-1] - bin_edges[0])/bin_ct, fill_color='limegreen')
+    p.add_glyph(hist_src, glyph)
+
+Note, for a categorical axis, pass a list of enumerations to figure()
 
     categories = ['apple', 'banana', 'cherry']
     y = [12, 4, 7]
