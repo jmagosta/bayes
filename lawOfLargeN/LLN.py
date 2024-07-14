@@ -78,7 +78,7 @@ def plot_rug(src, subtitle= 'Histogram', plot_height = 160, line_width=3, line_c
     max_y = max([z[1] for z in src.data["ys"]])
     # print(f'plot_rug {max_y}')
     p = figure( title=subtitle,
-            plot_width = 800, plot_height = plot_height, 
+            width = 800, height = plot_height, 
             background_fill_color="#fafafa",
             x_range=Population_Range, 
             # y_range = (0, max_y),  # Unnecessary

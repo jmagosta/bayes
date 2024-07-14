@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 axis_range = [-0.1,1.1,-0.1,1.1]          # xmin, xmax, ymin, ymax
 
 plt.figure()
-plt.plot(y, 'o', label='$y_i$')             # circles
-plt.plot(x, 'g+-', linewidth=3, label='$x_i$')           # green line and crosses
+plt.plot(y, linestyle = '--', label='$y_i$')              # dotted line
+plt.plot(x, 'g+-', linewidth=3,  label='$x_i$')           # green line and crosses
 plt.xlabel('$x$: independent variable')
 plt.ylabel('$y$: response variable')
 plt.axis(axis_range)
@@ -32,9 +32,7 @@ for pt in events_process.itertuples():  #sadly ax.text does not take vector coor
     ax[0].text(pt.event_times, 5*pt.item_cnts, str(pt.item_cnts), color='purple', horizontalalignment= 'center')
 
 ax[1].plot(binned_process.event_times, binned_process.item_cnts, '*')
-
 ax[2].plot(binned_counts_ev.index, binned_counts_ev.item_cnts, '*', color = 'red')
-
 for k in range(3):
     ax[k].grid()
 plt.show()
