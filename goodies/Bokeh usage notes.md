@@ -27,7 +27,7 @@ For more examples https://github.com/bokeh/bokeh/tree/master/examples
 
     p= figure(
         title="Plot",
-        plot_width = 1000, plot_height = 600, 
+        width = 1000, height = 600, 
         background_fill_color="#fafafa",
         x_range=(0, 20), y_range = (-1,0),
         x_axis_type="datetime",
@@ -45,7 +45,8 @@ Or individual properties may be set by
 
 ## plots
 
-    # by passing a pandas df, columns can be referenced by name as strings.
+    # by passing a pandas df, columns can be referenced by name as strings. The default '0' column
+    # isn't accepted by Bokeh - you need to set a string column name. 
     source = ColumnDataSource(a_dataframe)
 or 
 
