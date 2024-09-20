@@ -32,8 +32,8 @@ For more examples https://github.com/bokeh/bokeh/tree/master/examples
         x_range=(0, 20), y_range = (-1,0),
         x_axis_type="datetime",
         y_axis_type="log",
-        xaxis.axis_label = 'Length',
-        yaxis.axis_label = 'Width',
+        x_axis_label = 'Length',
+        y_axis_label = 'Width',
         toolbar_location=None  # to eliminate the default tool panel on the right
     )
 
