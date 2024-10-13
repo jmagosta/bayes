@@ -1,0 +1,194 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/4.0.0/github-markdown.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release/build/styles/default.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/markdown-it-texmath/css/texmath.min.css">
+<link rel="stylesheet" href="file:////Users/jma/.vscode/extensions/goessner.mdmath-2.7.4/themes/default/style.css">
+
+</head>
+<body class="markdown-body">
+<h1 dir="auto" id="bokeh-usage-notes">Bokeh usage notes</h1>
+<p dir="auto">Here are a few notes on how to get started with Bokeh's plotting features. The full documentation is at <a href="https://docs.bokeh.org/en/latest/">https://docs.bokeh.org/en/latest/</a></p>
+<p dir="auto">For more examples <a href="https://github.com/bokeh/bokeh/tree/master/examples">https://github.com/bokeh/bokeh/tree/master/examples</a></p>
+<h2 dir="auto" id="imports">imports</h2>
+<pre dir="auto"><code>from bokeh.plotting import figure, show, save
+from bokeh.layouts import column
+from bokeh.models import ColumnDataSource, FixedTicker, MultiLine, Grid, Plot, LinearAxis, Legend, Span, VBar,
+from bokeh.io import output_notebook
+from bokeh import palettes
+output_notebook()
+</code></pre>
+<h2 dir="auto" id="tldr">tl;dr</h2>
+<pre dir="auto"><code>def qplot(x,y,c='red'):
+    p = figure(width = 1000, height = 300, x_range=(0,1))
+    p.line(x=x, y=y, line_color=c)
+    return p
+
+show(qplot(x=df.index, y=df[1].values))
+</code></pre>
+<h2 dir="auto" id="figures">figures</h2>
+<pre dir="auto"><code>p= figure(
+    title=&quot;Plot&quot;,
+    plot_width = 1000, plot_height = 600, 
+    background_fill_color=&quot;#fafafa&quot;,
+    x_range=(0, 20), y_range = (-1,0),
+    x_axis_type=&quot;datetime&quot;,
+    y_axis_type=&quot;log&quot;,
+    x_axis_label = 'Length',
+    y_axis_label = 'Width',
+    toolbar_location=None  # to eliminate the default tool panel on the right
+)
+</code></pre>
+<p dir="auto">Or individual properties may be set by</p>
+<pre dir="auto"><code>p.xaxis.axis_label = 'Length'
+p.grid.grid_line_color=&quot;white&quot;
+</code></pre>
+<h2 dir="auto" id="plots">plots</h2>
+<pre dir="auto"><code># by passing a pandas df, columns can be referenced by name as strings.
+source = ColumnDataSource(a_dataframe)
+</code></pre>
+<p dir="auto">or</p>
+<pre dir="auto"><code>source = ColumnDataSource(dict(x=[..], y=[..], color=['#dddddd', 'blue', ..]))
+</code></pre>
+<p dir="auto">to see it's contents:</p>
+<pre dir="auto"><code>source.data.keys()
+</code></pre>
+<p dir="auto">or update it's contents:</p>
+<pre dir="auto"><code>source.data = dict(&lt;key&gt;, &lt;value&gt;)
+</code></pre>
+<h3 dir="auto" id="graphic-objects">graphic objects</h3>
+<pre dir="auto"><code>p.line(x='x', y='y', color='color', source=source, 
+        line_color=&quot;black&quot;, line_width=1, alpha=1.0, line_dash = 'dotdash', legend_label=&quot;Data&quot;)
+</code></pre>
+<p dir="auto">line_dash values:  “dashed”, “dotted”, “dotdash”, “dashdot”</p>
+<p dir="auto">Similarly, for convenience,</p>
+<pre dir="auto"><code>p.circle(.., color =..)
+p.square(..) 
+</code></pre>
+<p dir="auto">But more generally to place a defined shape on an x,y plot Bokeh has several dozen marker types, including <code>dot</code> and <code>cross</code>:</p>
+<pre dir="auto"><code>p.scatter(x, y, marker=&quot;dot&quot;, size=15,
+          line_color=&quot;navy&quot;, fill_color=&quot;orange&quot;, alpha=0.5)
+</code></pre>
+<p dir="auto">Markers can also be a data type in a ColumnDataSource</p>
+<pre dir="auto"><code>source.data['markers'] = [&quot;circle&quot;, &quot;square&quot;, &quot;circle&quot;, ... ]
+glyph = Scatter(..., marker=&quot;markers&quot;)
+p.add_glyph(source, glyph)
+</code></pre>
+<div  dir="auto" ></div>
+<img src="./bokeh_markers.png" width=280>
+<p dir="auto">For legends,</p>
+<pre dir="auto"><code>p.legend.location = &quot;center_right&quot;  # Assume there's a default if no properties are set.
+</code></pre>
+<p dir="auto">or a legend outside the plot area</p>
+<pre dir="auto"><code>lg = Legend(items= [..], location = (0,100))
+p.add_layout(lg)
+</code></pre>
+<h2 dir="auto" id="glyphs">glyphs</h2>
+<p dir="auto">Glyphs are a general term for shapes of all sorts: polygons, areas. Use the constructor function (In CamelCaps), then render it by calling <code>add_layout</code>:</p>
+<p dir="auto">To add annotations, one plots text labels at x,y coordinates. The data comes from a dict, or DataFrame:</p>
+<pre dir="auto"><code>datasource = ColumnDataSource(data=dict(labels=[..], x=[..], y=[..]))
+labels = LabelSet(x=x, y=y, text=labels, source=datasource)
+p.add_layout(labels)
+</code></pre>
+<p dir="auto">instead  use <code>text()</code> for alignment, and multi-line options:</p>
+<pre dir="auto"><code>p.text(x, y, text=[&quot;(%d, %d)&quot; % (q,r) for (q, r) in zip(q, r)],
+   text_baseline=&quot;middle&quot;, text_align=&quot;center&quot;, text_color='navy', text_font_size=&quot;26px&quot;)) 
+</code></pre>
+<p dir="auto">For a rectangular area glyph that spans the plot:</p>
+<pre dir="auto"><code>band = Band(base='TimeStampUtc', lower='low_std', upper='upper_std', source=cds,   level='underlay', fill_alpha=1.0, line_width=1, line_color='black')
+</code></pre>
+<p dir="auto">For Vertical and Horizontal lines:</p>
+<pre dir="auto"><code>vline = Span(location=0, dimension='height', line_color='red', line_width=3)
+hline = Span(location=0, dimension='width', line_color='green', line_width=3)
+p.renderers.extend([vline, hline])
+</code></pre>
+<p dir="auto">A Segment, e.g. vector, specified by origin, length and angle:</p>
+<pre dir="auto"><code>p.ray(x, y, length, angle=np.pi, angle_units=&quot;rad&quot;)
+</code></pre>
+<p dir="auto">Angles are by default specified in radians (&quot;rad&quot;). Alternatively use &quot;deg&quot; for degrees.</p>
+<h2 dir="auto" id="palettes">Palettes</h2>
+<p dir="auto">The palette needs to know the number of colors in the range, to obtain an array of colors.  E.g. In Category10, the 2nd color from a range of 5 colors is
+<code>Category10[5][1]</code></p>
+<h2 dir="auto" id="color-maps">Color Maps</h2>
+<p dir="auto">An explicitly listed map</p>
+<pre dir="auto"><code>colormap = {'setosa': 'red', 'versicolor': 'green', 'virginica': 'blue'}
+colors = [colormap[x] for x in data['species']]
+src = ColumnDataSource(dict(.., color=colors))
+</code></pre>
+<p dir="auto">or</p>
+<pre dir="auto"><code>color_map = CategoricalColorMapper( factors = [category1, ..], palette=[color1, ..])
+p.circle( .., color= dict(transfor=color_map)) ?? 
+</code></pre>
+<h2 dir="auto" id="histograms">Histograms</h2>
+<pre dir="auto"><code>hhist, bin_edges = np.histogram(x, bins=bin_ct, density=False)
+# A cute way to pass shared args
+LINE_ARGS = dict(color='white', line_color='black')
+# Define the sides of each &quot;box&quot; in the histogram plot
+a_figure.quad(bottom=0, left=bin_edges[:-1], right=bin_edges[1:], top=hhist, **LINE_ARGS)
+</code></pre>
+<p dir="auto">where <code>len(hhist) = bins</code> and <code>len(bin_edges) = bins+1</code></p>
+<p dir="auto">or use Vbar glyphs.</p>
+<pre dir="auto"><code>normal_hist_df = pd.DataFrame(dict(density= hhist, rv= bin_edges[:-1]))
+hist_src = ColumnDataSource(normal_hist_df)
+glyph = VBar(x='rv', top='density', bottom=0, width=(bin_edges[-1] - bin_edges[0])/bin_ct, fill_color='limegreen')
+p.add_glyph(hist_src, glyph)
+</code></pre>
+<p dir="auto">Note, for a categorical axis, pass a list of enumerations to figure()</p>
+<pre dir="auto"><code>categories = ['apple', 'banana', 'cherry']
+y = [12, 4, 7]
+p = figure(x_range = categories)
+glyph = VBar(x=categories, top=y, bottom=0, width=1, line_width=0)
+p.add_glyph(cds, glyph)
+</code></pre>
+<h2 dir="auto" id="multiple-objects-in-one-graphic">Multiple objects in one graphic</h2>
+<pre dir="auto"><code>show(row(p11, column(p21, p22)))
+</code></pre>
+<p dir="auto">or</p>
+<pre dir="auto"><code>show(gridplot([[p11, p12], [None, p22]]),
+              plotwidth=.., plotheight
+              =..)  # Results in a single toolbar for all plots
+</code></pre>
+<p dir="auto">or</p>
+<pre dir="auto"><code>show(gridplot([p1, p2, ...], ncols=2))
+</code></pre>
+<p dir="auto">See also</p>
+<pre dir="auto"><code>layout([[p11, p12], [p22], ..])
+</code></pre>
+<h2 dir="auto" id="output">Output</h2>
+<p dir="auto">Plots may be displayed in notebooks in-line by calling</p>
+<pre dir="auto"><code>output_notebook()
+</code></pre>
+<p dir="auto">in the notebook session.  Then to see the plot embedded in a cell's output, call</p>
+<pre dir="auto"><code>show(plot_obj)
+</code></pre>
+<p dir="auto">Alternately to save as an html file call: (It's one or the other.)</p>
+<pre dir="auto"><code>save(plot_obj, title=&quot;..&quot;, filename=&quot;...html&quot;)
+</code></pre>
+<p dir="auto">or call</p>
+<pre dir="auto"><code>output_file('some.html') 
+</code></pre>
+<p dir="auto">and <code>show()</code> will redirect to the file.</p>
+<h2 dir="auto" id="embedding-in-html-documents">Embedding in html documents.</h2>
+<p dir="auto">This command writes out html fragments to place the figure in an html document.</p>
+<pre dir="auto"><code>from bokeh.embed import components
+script, div = components(p_figure)
+
+The `div` part gets placed in the area of the &lt;body&gt; where the plot should appear.
+The `script` part also goes in the body section after all content.
+
+In addition the &lt;head&gt; section needs this snippet to load the bokeh library:
+    &lt;script type=&quot;text/javascript&quot; src=&quot;https://cdn.bokeh.org/bokeh/release/bokeh-2.0.2.min.js&quot; integrity=&quot;sha384-ufR9RFnRs6lniiaFvtJziE0YeidtAgBRH6ux2oUItHw5WTvE1zuk9uzhUU/FJXDp&quot; crossorigin=&quot;anonymous&quot;&gt;&lt;/script&gt;
+    &lt;script type=&quot;text/javascript&quot;&gt;
+        Bokeh.set_log_level(&quot;info&quot;);
+    &lt;/script&gt;
+</code></pre>
+<div  dir="auto" ></div>
+  </head>
+<p dir="auto">John Mark Agosta, licensed under Creative Commons, &quot;Attribution, Non-Commercial&quot;
+<img src="../CC_by-nc.png" width=80></p>
+
+</body>
+</html>

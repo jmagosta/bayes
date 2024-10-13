@@ -220,7 +220,7 @@ datetime.utcfromtimestamp(...)
 datetime.fromisoformat('2020-01-01 10:10:10')
     Return a datetime object. 
 
-datetime.strptime('2020-01-01, '%Y-%m-%d')
+datetime.strptime('2020-01-01', '%Y-%m-%d')
     Return a datetime object.
 
 dt_object.strftime('%Y-%m-%d %H %M %S')
