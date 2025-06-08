@@ -59,7 +59,10 @@ Path.write_text(data, ..)
 ________
 os.path - obsoleted by pathlib
 
-os.path.abspath(path)                    Path(path).absolute()   or Path(path).resolve() 
+os.path.abspath(path)
+                    or Path(path).absolute()
+                    or Path(path).resolve() 
+                    or Path(path).expanduser()
     Return a normalized absolutized version of the pathname path. 
     On most platforms, this is equivalent to 
     normpath(join(os.getcwd(), path)).
