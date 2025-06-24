@@ -6,12 +6,15 @@
 # Use to parse xdsl files
 import xml.etree.ElementTree as et
 
+# Pretty print potentials
 from tabulate import tabulate
 import networkx as nx
 
 import Potential
 from Potential import new_Potential
 import numpy as np
+
+DEBUG = 0
 
 
 # NOTE: all extract_* functions have side-effects that modify node_dict
@@ -28,8 +31,15 @@ class BN (object):
         self.node_order = None
         # Derived from  parent lists
         self.edges = None
+        self.center_dict = {}
+        self.enclosing_rect = dict(xmin= pow(2,16) ,
+                                   ymin =   pow(2,16),
+                                   xmax = - pow(2,16),
+                                   ymax = - pow(2,16))
+
 
     def set_kind(self, a_node):
+        'Both create the node key and its kind.' 
         self.n_dict[a_node.get('id')] = {'kind': a_node.tag}
 
     def extract_parents(self, a_node):
@@ -109,6 +119,19 @@ class BN (object):
         self.n_dict[a_node_extension.get('id')]['position' ] = u_list
         return self.n_dict
     
+    def node_centers(self):
+        'Parse node dimensions for plotting purposes.'
+        for k,attr in self.n_dict.items():
+            v = attr['position']
+            x = (v[0] + v[2])/2
+            y = -(v[1] + v[3])/2
+            self.center_dict[k]  = np.array((x,y))
+            self.enclosing_rect['xmin'] = min(x, self.enclosing_rect['xmin'])
+            self.enclosing_rect['ymin'] = min(y, self.enclosing_rect['ymin'])
+            self.enclosing_rect['xmax'] = max(x, self.enclosing_rect['xmax'])
+            self.enclosing_rect['ymax'] = max(y, self.enclosing_rect['ymax'])
+        return self.center_dict
+    
     def weave(self):
         'From the reaped list of nodes connect them into a network.'
         # Assemble edge lists
@@ -117,9 +140,13 @@ class BN (object):
             parents = self.get_parents(k)
             if len(parents) > 0:
                 [edges.append((z, k )) for z in parents] # Arc direction: z -> k
-        print('Edges: ',edges, '\n')
+        if DEBUG > 0: print('Edges: ',edges, '\n')
         self.edges = edges
         self.network = nx.DiGraph(self.edges)
+        self.node_centers()
+        # An ordering respecting the arc directions. e.g the
+        # utility node should be last on the list. 
+        self.node_order = list(nx.topological_sort(self.network))
         return edges
 
     # TODO Create an a-cyclic graph from the parents of each node. 
@@ -142,23 +169,16 @@ class BN (object):
         the_potential = self.get_potential(a_node)
         print('\tpotential: ', [k for k in the_potential.shape.keys()])
         print('\t', str(the_potential.p).replace('tensor(','').replace(')', ''))
-    
-    def node_centers(self):
-        xmax = ymax = - pow(2,16)
-        xmin = ymin =   pow(2,16)
-        center_dict = {}
-        for k,attr in self.n_dict.items():
-            v = attr['position']
-            x = (v[0] + v[2])/2
-            y = -(v[1] + v[3])/2
-            center_dict[k]  = np.array((x,y))
-            xmin = min(x, xmin)
-            ymin = min(y, ymin)
-            xmax = max(x, xmax)
-            ymax = max(y, ymax)
-        return center_dict
         
     ### Print functions ###
+    def pr_influences(self):
+        'Print both the nodes parents and children.'
+        print('Node\t{ancestors}\n\t{descendants}\n')
+        for n in self.network:
+            print(n, ': ',nx.ancestors(self.network,n), '\n\t', 
+                nx.descendants(self.network,n), '\n')
+            
+
     def pr_nodes(self):
         'Node names and types'
         for k, attrs in self.n_dict.items():
@@ -195,6 +215,10 @@ class BN (object):
         values = [que_copy(s, v) for s, v in zip(states, values)]
         print(tabulate(values, **args))
 
+### BN
+
+### Examples for parsing a xdsl file
+
 ##  Walk the xdsl elements of a network
 def extract_net(xdsl_file):
     '''Finds the first element under the top level that contains a list of nodes,
@@ -210,10 +234,11 @@ def extract_net(xdsl_file):
     return  list(node_tree), list(node_extensions)
 
 # create a BN object from the parsing 
-def reap(the_parse):
+def reap(the_parse_tuple):
     'Factory to parse the attributes of each node, returning a list with the attributes in a dict.'
+    # Pass the node tree and extensions from 'extract net'
     bn = BN()
-    the_nodes, the_extensions = the_parse
+    the_nodes, the_extensions = the_parse_tuple
     for a_node in the_nodes:
         # Set the node kind
         bn.set_kind(a_node)
@@ -228,6 +253,7 @@ def reap(the_parse):
             bn.extract_utilities(a_node)
     for an_ex in the_extensions:
         bn.extract_positions(an_ex)
+    # Build the network, and 
     bn.edges = bn.weave()
     return bn
 
@@ -240,7 +266,7 @@ if __name__ == '__main__':
     bn = reap(parsed)
     bn.pr_nodes()
     print()
-    print(bn.node_centers())  
+    print(bn.center_dict)  
 
 
     
