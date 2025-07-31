@@ -16,6 +16,13 @@ from tabulate import tabulate
 
 ###########
 
+    
+def get_potential(a_node, n_dict):
+    'Find the probability np array in the node, and label it using parents in the graph'
+    # The states of the RV label the columns, so that the matrix is row-markov
+    the_cpt = n_dict[a_node]['potential']
+    return the_cpt
+
 # Format one-dim tensors 
 # from collections import deque
 def pr_one_dim_table(the_potential, the_var, n_dict, **args):
@@ -36,7 +43,8 @@ def pr_one_dim_table(the_potential, the_var, n_dict, **args):
     ## For joining by aligning potentials as named tensors
 
 def dim_index(potential_cpt, candidate):
-    # Starting with 0 as the first location, so the last location equals the length of the shape
+    # Starting with 0 as the first location, so the last location 
+    # equals the length of the shape
     cpt_dims = potential_cpt.dim_names
     # if its included is it not already last?
     if candidate in cpt_dims and candidate != list(cpt_dims)[-1]:
@@ -62,19 +70,7 @@ def move_named_dim_to_end(the_named_tensor, the_dimension):
         # A no op
         return the_named_tensor 
     
-def marginalize_last(p1, p2):
-    '''For a potential matching the last dimension of the other, join them,
-    then marginalized out the last dimension'''
-    if list(p1.shape)[-1] != list(p2.shape)[-1]:           # Compare shapes by indexed value
-        print(f'Err, last shapes do not match:\t{list(p1.shape)[-1]} != {list(p2.shape)[-1]}')
-        return None
-    else:
-        new_tensor = (p1.p * p2.p).sum(-1)
-        # The symmetric set difference - those not common to both. 
-        s1 = set(p1.shape.items())
-        s2 = set(p2.shape.items())
-        new_shape = OrderedDict(s1.union(s2) - s1.intersection(s2))
-    return Potential(new_tensor, new_shape)
+
 
 # No problem with mapping single arg functions over tensors!  
 def delta_utility(x, exponand = 0.5, normalize = 50):
@@ -89,8 +85,22 @@ def marginalize(child_potential, parent_potential):
     sh = OrderedDict(set(child_potential.shape.items()) - set(parent_potential.shape.items()))
     return Potential(cpt, sh)
 
+def marginalize_last(p1, p2):
+    '''For a potential matching the last dimension of the other, join them,
+    then marginalized out the last dimension'''
+    if list(p1.shape)[-1] != list(p2.shape)[-1]:           # Compare shapes by indexed value
+        print(f'Err, last shapes do not match:\t{list(p1.shape)[-1]} != {list(p2.shape)[-1]}')
+        return None
+    else:
+        new_tensor = (p1.p * p2.p).sum(-1)
+        # The symmetric set difference - those not common to both. 
+        s1 = set(p1.shape.items())
+        s2 = set(p2.shape.items())
+        new_shape = OrderedDict(s1.union(s2) - s1.intersection(s2))
+    return Potential(new_tensor, new_shape)
+
 def shift_to_end(the_shape, the_var):
-    the_shape.move_to_end(the_var)
+    the_shape.move_to_end(the_var)  # method from OrderedDict
     return the_shape
 
 

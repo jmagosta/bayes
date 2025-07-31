@@ -10,8 +10,8 @@ import xml.etree.ElementTree as et
 from tabulate import tabulate
 import networkx as nx
 
-import Potential
-from Potential import new_Potential
+from Potential import * 
+# import Potential
 import numpy as np
 
 DEBUG = 0
@@ -20,11 +20,11 @@ DEBUG = 0
 # NOTE: all extract_* functions have side-effects that modify node_dict
 class BN (object):
 
-    def __init__(self, name_dict={}):
+    def __init__(self, node_dict={}):
         ''
         # Reduce the xdsl to a dict of dicts.
         # Use it's keys for a list of nodes
-        self.n_dict = name_dict
+        self.n_dict = node_dict
         # a networkx graph object
         self.network = None 
         # Build a reverse topological order to the DAG
@@ -36,78 +36,116 @@ class BN (object):
                                    ymin =   pow(2,16),
                                    xmax = - pow(2,16),
                                    ymax = - pow(2,16))
+    ### Accessors ###
+
+    def get_node(self, node_name:str):
+        return self.n_dict[node_name]  
+
+    # def get_states(self, a_node):
+    #     return self.n_dict[a_node]['states' ]
+                
+    # def get_parents(self, a_node):
+    #     return self.n_dict[a_node]['parents' ]
+    
+
+    # def get_potential(self, a_node):
+    #     'Find the probability np array in the node, and label it using parents in the graph'
+    #     # The states of the RV label the columns, so that the matrix is row-markov
+    #     the_cpt = self.n_dict[a_node]['potential']
+    #     return the_cpt
 
 
-    def set_kind(self, a_node):
-        'Both create the node key and its kind.' 
-        self.n_dict[a_node.get('id')] = {'kind': a_node.tag}
+    
+
+    # def set_kind(self, a_node):
+    #     'Both create the node key and its kind.'
+    #     self.n_dict[a_node.get('id')] = ID_node(a_node.tag) 
+    #     self.get_node(a_node) = {'kind': a_node.tag}
+    #     # self.n_dict[a_node.get('id')] = {'kind': a_node.tag}
 
     def extract_parents(self, a_node):
         parent_list = []
         p = a_node.find('parents')
         if p is not None:
             parent_list = p.text.split(' ') 
-        self.n_dict[a_node.get('id')]['parents' ] = parent_list
-        return self.n_dict
+        # self.n_dict[a_node.get('id')]['parents' ] = parent_list
+        return parent_list
 
     def extract_states(self, a_node):
         state_list = []
         for element in a_node:
             if element.tag == 'state':
                 state_list.append(element.get('id'))
-        self.n_dict[a_node.get('id')]['states' ] = state_list
-        return self.n_dict
+        # self.n_dict[a_node.get('id')]['states' ] = state_list
+        return state_list
 
-    def state_size(self, node_name):
-        # Deterministic nodes such as utilities have only one state. 
+# A property of the ID_node
+    # def state_size(self, node_name):
+    #     # Deterministic nodes such as utilities have only one state. 
         
-        # if a_node.tag == 'utilities':
-        #     return 1
-        # else:
-        #     node_name = a_node.get('id') 
-        return len(self.n_dict[node_name]['states'])
+    #     # if a_node.tag == 'utilities':
+    #     #     return 1
+    #     # else:
+    #     #     node_name = a_node.get('id') 
+    #     return len(self.n_dict[node_name]['states'])
     
-    def build_tensor(self, a_node, elements):
-        node_name = a_node.get('id')
-        dim_names = [node_name]
-        # Need the parents to dimension the cpt
-        state_counts = [self.state_size(node_name)]    
-        parents = self.get_parents(node_name)
+    def build_potential(self, elements, features):
+        # node_name = a_node.get('id')
+        dim_names = [features['name']]
+        # Need the parents to dimension the cpt! 
+        parents = features['parents']
+        states = features['states']
+        state_sizes = [len(states)]    
         dim_names.extend(parents)  
         for p in parents:
-            state_counts.append(self.state_size(p))      #list of dimensions
-        # print('S', state_counts)
+            state_sizes.append(self.get_node(p).state_size())      #list of dimensions
+        # print('S', state_sizes)
         try:
-            # if len(prob_list) == state_counts[0]:             # One dimension, no conditioning 
-            potential = new_Potential(elements, state_counts, dim_names)   
-            #     cpt = torch.tensor(prob_list).reshape(state_counts)
-            self.n_dict[node_name]['potential' ] = potential
+           # One dimension, no conditioning 
+            potential = new_Potential(elements, state_sizes, dim_names)   
+                #     cpt = torch.tensor(prob_list).reshape(state_sizes)
+                # self.n_dict[node_name]['potential' ] = potential
+            return potential 
         except Exception as e:
             print('Err ', e)
-            print(f'list of len {elements} is not a consistent with {state_counts}.')
+            print(f'list of len {elements} is not a consistent with {state_sizes}.')
+            return None
 
-    def extract_probabilities(self, a_node):
-        # Probabilities are stored as a flat list, in row major order, e.g. 
-        # for each conditioning, the probs for each state are listed together
-        # sequentially. 
-        p = a_node.find('probabilities')
-        if p is not None:
-            prob_list = [float(k) for k in p.text.split(' ')]
-            self.build_tensor(a_node, prob_list)
-        # except Exception as e:
-        #     print('Err ', e)
-        #     print(f'list of len {prob_list} is not a consistent with {state_counts}.')
-        return self.n_dict
+    # def extract_probabilities(self, p, features):
+    #     # Probabilities are stored as a flat list, in row major order, e.g. 
+    #     # for each conditioning, the probs for each state are listed together
+    #     # sequentially.
+    #     node_name = features['name']
+    #     states_list = features['states']
+    #     if p is not None:
+    #         prob_list = [float(k) for k in p.text.split(' ')]
+    #         potential = self.build_tensor(node_name, prob_list, states_list)
+    #     # except Exception as e:
+    #     #     print('Err ', e)
+    #     #     print(f'list of len {prob_list} is not a consistent with {state_sizes}.')
+    #     return potential
 
-    def extract_utilities(self, a_node):
-        u = a_node.find('utilities')
-        self.n_dict[a_node.get('id')]['states' ] = ['utility']   # a dimension with just one state. 
-        if u is not None:
-            u_list = [float(k) for k in u.text.split(' ')]
-            self.build_tensor(a_node, u_list)
-            # TODO The utilities list dimension with  parent states. 
-        # self.n_dict[a_node.get('id')]['utilities' ] = u_list
-        return self.n_dict
+    # def extract_utilities(self,u, features):
+        
+    #     # TODO does xdsl not label utility / deterministic node states?
+    #     node_name = features['name'] 
+    #     # self.n_dict[a_node.get('id')]['states' ] = ['utility']   # a dimension with just one state. 
+    #     if u is not None:
+    #         u_list = [float(k) for k in u.text.split(' ')]
+    #         potential = self.build_tensor(node_name, u_list, ['utility'])
+    #         # TODO The utilities list dimension with  parent states. 
+    #     # self.n_dict[a_node.get('id')]['utilities' ] = u_list
+    #     return potential
+    
+    def uniform_potential(self, features):
+        states = features['states']
+        # TODO lookup in self ()
+        parents = features.get('parents')
+        if len(parents) == 0:
+            uniform = [1] * len(states)
+            dim = [len(states)]
+            return new_Potential(uniform, dim, [features['name']])
+        return None
 
     # Note: Node extensions also have the display name of the node, which is an
     # alternative to it's id. 
@@ -116,8 +154,8 @@ class BN (object):
         if u is not None:
             u_list = [int(k) for k in u.text.split(' ')]
             # The utilities list cannot be dimensioned until we know it's parent states. 
-        self.n_dict[a_node_extension.get('id')]['position' ] = u_list
-        return self.n_dict
+        # self.n_dict[a_node_extension.get('id')]['position' ] = u_list
+        return u_list
     
     def node_centers(self):
         'Parse node dimensions for plotting purposes.'
@@ -150,25 +188,6 @@ class BN (object):
         return edges
 
     # TODO Create an a-cyclic graph from the parents of each node. 
-
-    ### Accessors ###
-
-    def get_states(self, a_node):
-        return self.n_dict[a_node]['states' ]
-                
-    def get_parents(self, a_node):
-        return self.n_dict[a_node]['parents' ]
-
-    def get_potential(self, a_node):
-        'Find the probability np array in the node, and label it using parents in the graph'
-        # The states of the RV label the columns, so that the matrix is row-markov
-        the_cpt = self.n_dict[a_node]['potential']
-        return the_cpt
-    
-    def pr_potential(self, a_node):
-        the_potential = self.get_potential(a_node)
-        print('\tpotential: ', [k for k in the_potential.shape.keys()])
-        print('\t', str(the_potential.p).replace('tensor(','').replace(')', ''))
         
     ### Print functions ###
     def pr_influences(self):
@@ -218,6 +237,8 @@ class BN (object):
 ### BN
 
 ### Examples for parsing a xdsl file
+def extract_floats(element):
+    return [float(z) for z in element.text.split(' ')]
 
 ##  Walk the xdsl elements of a network
 def extract_net(xdsl_file):
@@ -240,19 +261,42 @@ def reap(the_parse_tuple):
     bn = BN()
     the_nodes, the_extensions = the_parse_tuple
     for a_node in the_nodes:
+        # Create a local container for node features. 
+        features = dict(name=a_node.get('id'))
         # Set the node kind
-        bn.set_kind(a_node)
+        features['kind'] = a_node.tag 
+        # id_node.set_kind(a_node.tag)
         # node_dict[a_node.get('id')] = {'kind': a_node.tag}
-        bn.extract_parents(a_node)
-        # CPT and decision nodes have states
+        features['parents'] = bn.extract_parents(a_node)
+        # CPT and decision nodes have states, not deterministic or value nodes
         if (a_node.tag == 'cpt') or (a_node.tag == 'decision'):
-            bn.extract_states(a_node)
+            features['states'] = bn.extract_states(a_node)
+        elif (a_node.tag == 'utility'):
+            features['states'] = [a_node.tag]  # Utilities have only one state, it is arbitrary.
         if (a_node.tag == 'cpt'):
-            bn.extract_probabilities(a_node)
+            probs = a_node.find('probabilities')
+            elements = extract_floats(probs)
+            features['potential'] = bn.build_potential(elements, features)
         if (a_node.tag == 'utility'):
-            bn.extract_utilities(a_node)
+            utils = a_node.find('utilities')
+            elements = extract_floats(utils)
+            features['potential'] = bn.build_potential(elements, features)
+        if (a_node.tag == 'decision'):
+            # TODO use build_potential instead. Need default elements 
+            # for all parents. 
+            features['potential'] = bn.uniform_potential(features)
+        # id_node = ID_node(a_node.get('id'))
+        # TODO - all other node types
+        if a_node.tag in ('cpt', 'decision', 'utility'):
+            node_object = create_from_dict(features)
+            # The set of  nodes is kept in the BN object dict. 
+            # This function assumes that a nodes parents are created before it is. 
+            # TODO use BN::get_node() instead
+            bn.n_dict[node_object.label] = node_object
     for an_ex in the_extensions:
-        bn.extract_positions(an_ex)
+        # Only node types that were parsed will be in bn.dict
+        if bn.n_dict.get(an_ex.attrib['id']) is not None:
+            bn.n_dict[an_ex.attrib['id']].set_positions(bn.extract_positions(an_ex))
     # Build the network, and 
     bn.edges = bn.weave()
     return bn
