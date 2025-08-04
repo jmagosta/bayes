@@ -43,7 +43,7 @@ def new_Potential(prob_list, dim_list, dim_names ):
     sh = OrderedDict(zip(dim_names, dim_list))
     return Potential(p, sh)
 
-### ID node ###
+### ID node #############################################################
 # TODO or inherit from (dict)
 class ID_node (object):
 
@@ -55,15 +55,18 @@ class ID_node (object):
         # state size is used to create its potential, when reaping the model file.
         # It applies to the potential marginal.
         # But is not stored with the potential.  
-        self.states = None
+        self.states = []
         self.potential = None
-        self.positions = None   # Plotting info.
+        self.positions = None   # x,y node centers.  Plotting info.
 
     def state_size(self):
         return len(self.states) 
     
     def get_parents(self):
         return self.parents
+    
+    def get_kind(self) -> str:
+        return self.kind
 
     def pr_potential(self):
         # the_potential = self.get_potential(a_node)

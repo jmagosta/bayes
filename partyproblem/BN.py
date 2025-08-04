@@ -14,7 +14,7 @@ from Potential import *
 # import Potential
 import numpy as np
 
-DEBUG = 0
+DEBUG = 1
 
 
 # NOTE: all extract_* functions have side-effects that modify node_dict
@@ -25,13 +25,15 @@ class BN (object):
         # Reduce the xdsl to a dict of dicts.
         # Use it's keys for a list of nodes
         self.n_dict = node_dict
-        # a networkx graph object
-        self.network = None 
-        # Build a reverse topological order to the DAG
-        self.node_order = None
         # Derived from  parent lists
         self.edges = None
+        # a networkx graph object
+        self.network = nx.DiGraph(self.edges)
+        # Build a reverse topological order to the DAG
+        self.node_order = None
+        # Node locations
         self.center_dict = {}
+        # Canvas extent
         self.enclosing_rect = dict(xmin= pow(2,16) ,
                                    ymin =   pow(2,16),
                                    xmax = - pow(2,16),
@@ -41,34 +43,70 @@ class BN (object):
     def get_node(self, node_name:str):
         return self.n_dict[node_name]  
 
-    # def get_states(self, a_node):
-    #     return self.n_dict[a_node]['states' ]
+    def get_states(self, a_node):
+        return self.n_dict[a_node].states
                 
-    # def get_parents(self, a_node):
-    #     return self.n_dict[a_node]['parents' ]
+    def get_parents(self, a_node):
+        return self.n_dict[a_node].parents
     
-
-    # def get_potential(self, a_node):
-    #     'Find the probability np array in the node, and label it using parents in the graph'
-    #     # The states of the RV label the columns, so that the matrix is row-markov
-    #     the_cpt = self.n_dict[a_node]['potential']
-    #     return the_cpt
-
-
+    def get_potential(self, a_node):
+        'Find the probability np array in the node, and label it using parents in the graph'
+        # The states of the RV label the columns, so that the matrix is row-markov
+        the_cpt = self.get_node(a_node).potential
+        return the_cpt
     
+    ### Print functions ###
+    def pr_influences(self):
+        'Print both the nodes parents and children.'
+        print('Node\t{ancestors}\n\t{descendants}\n')
+        for n in self.network:
+            print(n, ': ',nx.ancestors(self.network,n), '\n\t', 
+                nx.descendants(self.network,n), '\n')
+            
+    def pr_nodes(self):
+        'Node names and types'
+        for k, node in self.n_dict.items():
+            if DEBUG: print(f'>>> {k} <<<')
+            node.pr_node()
+            print()
 
-    # def set_kind(self, a_node):
-    #     'Both create the node key and its kind.'
-    #     self.n_dict[a_node.get('id')] = ID_node(a_node.tag) 
-    #     self.get_node(a_node) = {'kind': a_node.tag}
-    #     # self.n_dict[a_node.get('id')] = {'kind': a_node.tag}
+    def pr_locations(self):
+        print('\nNode Centers:')
+        for n, loc in bn.center_dict.items():
+            print(f'{n}: \t{loc}')
+    
+    # Similar to pr_nodes()
+    def pr_named_tensors(self):
+        'Show all the model tensors'
+        name_dict = self.n_dict
+        for a_node in name_dict:
+            if name_dict[a_node].get_kind() in ('cpt', 'utility'):
+                print(a_node, '\n\t', self.get_potential(a_node),'\n')
+
+    # Format one-dim tensors 
+    # from collections import deque
+    def pr_one_dim_table(self, the_potential, the_var, **args):
+        def que_copy(prefix, queue):
+            if not isinstance(queue, list):
+                queue = [queue]
+            queue.insert(0, prefix)
+            return queue
+        states = self.n_dict[the_var]['states']
+        values = the_potential.tolist()
+        # Flatten nested lists
+        while len(values)  == 1:   # TODO is this test necessary?
+            values = values[0]
+        print(f' *** {the_var} ***')
+        values = [que_copy(s, v) for s, v in zip(states, values)]
+        print(tabulate(values, **args))
+    
+    ### parse xdsl
 
     def extract_parents(self, a_node):
         parent_list = []
         p = a_node.find('parents')
         if p is not None:
             parent_list = p.text.split(' ') 
-        # self.n_dict[a_node.get('id')]['parents' ] = parent_list
         return parent_list
 
     def extract_states(self, a_node):
@@ -76,18 +114,7 @@ class BN (object):
         for element in a_node:
             if element.tag == 'state':
                 state_list.append(element.get('id'))
-        # self.n_dict[a_node.get('id')]['states' ] = state_list
         return state_list
-
-# A property of the ID_node
-    # def state_size(self, node_name):
-    #     # Deterministic nodes such as utilities have only one state. 
-        
-    #     # if a_node.tag == 'utilities':
-    #     #     return 1
-    #     # else:
-    #     #     node_name = a_node.get('id') 
-    #     return len(self.n_dict[node_name]['states'])
     
     def build_potential(self, elements, features):
         # node_name = a_node.get('id')
@@ -103,40 +130,12 @@ class BN (object):
         try:
            # One dimension, no conditioning 
             potential = new_Potential(elements, state_sizes, dim_names)   
-                #     cpt = torch.tensor(prob_list).reshape(state_sizes)
-                # self.n_dict[node_name]['potential' ] = potential
             return potential 
         except Exception as e:
             print('Err ', e)
             print(f'list of len {elements} is not a consistent with {state_sizes}.')
             return None
 
-    # def extract_probabilities(self, p, features):
-    #     # Probabilities are stored as a flat list, in row major order, e.g. 
-    #     # for each conditioning, the probs for each state are listed together
-    #     # sequentially.
-    #     node_name = features['name']
-    #     states_list = features['states']
-    #     if p is not None:
-    #         prob_list = [float(k) for k in p.text.split(' ')]
-    #         potential = self.build_tensor(node_name, prob_list, states_list)
-    #     # except Exception as e:
-    #     #     print('Err ', e)
-    #     #     print(f'list of len {prob_list} is not a consistent with {state_sizes}.')
-    #     return potential
-
-    # def extract_utilities(self,u, features):
-        
-    #     # TODO does xdsl not label utility / deterministic node states?
-    #     node_name = features['name'] 
-    #     # self.n_dict[a_node.get('id')]['states' ] = ['utility']   # a dimension with just one state. 
-    #     if u is not None:
-    #         u_list = [float(k) for k in u.text.split(' ')]
-    #         potential = self.build_tensor(node_name, u_list, ['utility'])
-    #         # TODO The utilities list dimension with  parent states. 
-    #     # self.n_dict[a_node.get('id')]['utilities' ] = u_list
-    #     return potential
-    
     def uniform_potential(self, features):
         states = features['states']
         # TODO lookup in self ()
@@ -154,13 +153,12 @@ class BN (object):
         if u is not None:
             u_list = [int(k) for k in u.text.split(' ')]
             # The utilities list cannot be dimensioned until we know it's parent states. 
-        # self.n_dict[a_node_extension.get('id')]['position' ] = u_list
         return u_list
     
     def node_centers(self):
         'Parse node dimensions for plotting purposes.'
         for k,attr in self.n_dict.items():
-            v = attr['position']
+            v = attr.positions
             x = (v[0] + v[2])/2
             y = -(v[1] + v[3])/2
             self.center_dict[k]  = np.array((x,y))
@@ -175,7 +173,7 @@ class BN (object):
         # Assemble edge lists
         edges = []
         for (k, attr) in self.n_dict.items():
-            parents = self.get_parents(k)
+            parents = attr.get_parents()
             if len(parents) > 0:
                 [edges.append((z, k )) for z in parents] # Arc direction: z -> k
         if DEBUG > 0: print('Edges: ',edges, '\n')
@@ -188,53 +186,8 @@ class BN (object):
         return edges
 
     # TODO Create an a-cyclic graph from the parents of each node. 
-        
-    ### Print functions ###
-    def pr_influences(self):
-        'Print both the nodes parents and children.'
-        print('Node\t{ancestors}\n\t{descendants}\n')
-        for n in self.network:
-            print(n, ': ',nx.ancestors(self.network,n), '\n\t', 
-                nx.descendants(self.network,n), '\n')
-            
+### End BN
 
-    def pr_nodes(self):
-        'Node names and types'
-        for k, attrs in self.n_dict.items():
-            print(f'>>> {k} <<<')
-            # if attrs['kind'] == 'cpt' or attrs['kind'] == 'utility':
-            for f, v in attrs.items():
-                    if f == 'potential':
-                        self.pr_potential(k)
-                    else:
-                        print(f'\t{f}: {v}')
-            print()
-    
-    def pr_named_tensors(self):
-        'Show all the model tensors'
-        name_dict = self.n_dict
-        for a_node in name_dict:
-            if name_dict[a_node]['kind'] == 'cpt' or name_dict[a_node]['kind'] == 'utility':
-                print(a_node, '\n\t', self.get_potential(a_node),'\n')
-
-    # Format one-dim tensors 
-    # from collections import deque
-    def one_dim_table(self, the_potential, the_var, **args):
-        def que_copy(prefix, queue):
-            if not isinstance(queue, list):
-                queue = [queue]
-            queue.insert(0, prefix)
-            return queue
-        states = self.n_dict[the_var]['states']
-        values = the_potential.tolist()
-        # Flatten nested lists
-        while len(values)  == 1:   # TODO is this test necessary?
-            values = values[0]
-        print(f' *** {the_var} ***')
-        values = [que_copy(s, v) for s, v in zip(states, values)]
-        print(tabulate(values, **args))
-
-### BN
 
 ### Examples for parsing a xdsl file
 def extract_floats(element):
@@ -309,8 +262,9 @@ if __name__ == '__main__':
     parsed = extract_net(NETWORK_FILE)
     bn = reap(parsed)
     bn.pr_nodes()
+    bn.pr_locations()
     print()
-    print(bn.center_dict)  
+    bn.pr_named_tensors()
 
 
     
