@@ -16,26 +16,32 @@ class Potential (object):  # An named tensor
     varies by column.  In general, for joint probabilities, the variables 
     making up the joint follow the conditioning variables in the shape list. 
     TODO: Should there be a flag to distinguish marginal variables?
+          In IDs, a CPT always has one, and just one marginal dimension, which is the last in the tensor.
+          Similarly a value node has a last dimension of size 1, and all others are conditionings. 
     TODO: Should marginal variables also have their state labels included?
     TODO: The variable name is kept at the node level. 
     '''
 
     def __init__(self, cpt, shape):
-        ' cpt  - multidim tensor, shape: OrderedDict '
+        ' cpt  - multidim tensor, named_shape: OrderedDict '
         self.p = cpt
-        self.shape = shape
+        self.named_shape = shape
         self.dim_names = shape.keys()
 
     def __repr__(self):
-        return str(self.shape) + '\n\t' + repr(self.p)
+        return str(self.named_shape) + '\n\t' + repr(self.p)
     
-    def get_shape(self):
+    def get_named_shape(self):
         'The ordered dict of name: dimension, ...'
-        return self.shape
+        return self.named_shape
     
     def get_dim_names(self):
-        'The names from the shape.'
-        return self.shape.keys()
+        'The names from the named_shape.'
+        return self.named_shape.keys()
+    
+    def get_dimensions(self):
+        'The size of each dimension in the potential tensor'
+        return self.p.shape
     
 def new_Potential(prob_list, dim_list, dim_names ):
     'factory for creating potential from parsed xml components'
@@ -56,8 +62,11 @@ class ID_node (object):
         # It applies to the potential marginal.
         # But is not stored with the potential.  
         self.states = []
-        self.potential = None
+        self.potential = new_Potential([],[0], [] )   #  of type Potential
         self.positions = None   # x,y node centers.  Plotting info.
+
+    def get_node_name(self):
+        return self.label
 
     def state_size(self):
         return len(self.states) 
@@ -67,10 +76,13 @@ class ID_node (object):
     
     def get_kind(self) -> str:
         return self.kind
+    
+    def get_potential(self) -> Potential:
+        return self.potential
 
     def pr_potential(self):
         # the_potential = self.get_potential(a_node)
-        print('\tpotential: ', [k for k in self.potential.shape.keys()])
+        print('\tnamed tensor: ', [k for k in self.get_potential().get_dim_names()])
         print('      ', str(self.potential.p).replace('tensor(','').replace(')', ''))
 
     def pr_node(self):
@@ -113,13 +125,15 @@ if __name__ == '__main__':
     # md = new_Potential([1.0, 0.0, 0.1, 0.9, 0.0, 1.0, 0.4, 0.6], 
     #                    [2,2,2], 
     #                    ['condition1', 'condition', 'margin'])
-    md = new_Potential([1.0,  0.1, 0.0,  0.4], 
-                       [2,2,1], 
-                       ['condition1', 'condition', 'margin'])
+    md = new_Potential([0.9,  0.1, 0.0,  1.0, 0.5, 0.5, 0.3, 0.7], 
+                       [2,2,2], 
+                       ['condition2', 'condition1', 'margin'])
     print(md)
+ 
 
     nd = ID_node('node1')
     nd.potential = md
+    nd.pr_potential()
     print()
     nd.pr_node()
 

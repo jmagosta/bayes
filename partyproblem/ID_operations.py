@@ -43,8 +43,11 @@ def pr_one_dim_table(the_potential, the_var, n_dict, **args):
     ## For joining by aligning potentials as named tensors
 
 def dim_index(potential_cpt, candidate):
+    '''Find where a labeled candidate dimension is in the dimensions 
+    of a potential, if it is not already last.'''
+    # TODO how does this work if more than one dimension is found?
     # Starting with 0 as the first location, so the last location 
-    # equals the length of the shape
+    # equals the length -1 of the shape
     cpt_dims = potential_cpt.dim_names
     # if its included is it not already last?
     if candidate in cpt_dims and candidate != list(cpt_dims)[-1]:
@@ -70,8 +73,6 @@ def move_named_dim_to_end(the_named_tensor, the_dimension):
         # A no op
         return the_named_tensor 
     
-
-
 # No problem with mapping single arg functions over tensors!  
 def delta_utility(x, exponand = 0.5, normalize = 50):
     dims = x.shape
@@ -92,6 +93,7 @@ def marginalize_last(p1, p2):
         print(f'Err, last shapes do not match:\t{list(p1.shape)[-1]} != {list(p2.shape)[-1]}')
         return None
     else:
+        # NOTE: pytorch does not restrict marginalization to just the last dim
         new_tensor = (p1.p * p2.p).sum(-1)
         # The symmetric set difference - those not common to both. 
         s1 = set(p1.shape.items())
@@ -104,23 +106,25 @@ def shift_to_end(the_shape, the_var):
     return the_shape
 
 
-def join_parent(the_conditional, the_parent, name_dict):
+def join_parent(the_conditional, the_parent):
     'Assume the parent rv is the last dim in the conditional, and marginalize out that dim'
     # Find the parent and transpose it to last dim
-    c_potential = get_potential(the_conditional, name_dict)
-    p_potential = get_potential(the_parent, name_dict)
-    found_dim = dim_index(c_potential,the_parent)
+    # c_potential = get_potential(the_conditional, name_dict)
+    # p_potential = get_potential(the_parent, name_dict)
+    # TODO make this work for more than one
+    parent_var = list(the_parent.get_dim_names())[0]
+    found_dim = dim_index(the_conditional, parent_var)
     # Is found dim not already in the last dim? 
-    new_shape = c_potential.shape
+    new_shape = the_parent.shape
     if found_dim is not None:   # TODO does this work if the found dim is first?
         # Move found_dim to last dimension
-        new_shape = shift_to_end(new_shape, the_parent)
+        new_shape = shift_to_end(new_shape, parent_var)
         c_transpose = list(range(len(new_shape)))
         c_transpose.append(c_transpose.pop(found_dim))
         # Transpose CPT
-        c_potential.p.permute(c_transpose)
+        the_conditional.p.permute(c_transpose)
         # TODO - create a new potential? 
-    new_joint =  Potential(c_potential.p * p_potential.p, new_shape)
+    new_joint =  Potential(the_conditional.p * the_parent.p, new_shape)
     return new_joint
 
 if __name__ == '__main__':

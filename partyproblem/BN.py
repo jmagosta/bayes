@@ -14,6 +14,10 @@ from Potential import *
 # import Potential
 import numpy as np
 
+# from tabulate import tabulate
+import matplotlib.pyplot as plt
+import seaborn as sn 
+
 DEBUG = 1
 
 
@@ -74,6 +78,16 @@ class BN (object):
         print('\nNode Centers:')
         for n, loc in bn.center_dict.items():
             print(f'{n}: \t{loc}')
+
+    # Use the extracted dimensions to plut with networkx
+    def pr_network(self):
+        positions = self.center_dict
+        DG = self.network
+        plt.figure(figsize=(6,3))
+        nx.draw_networkx_labels(DG, pos=positions)
+        nx.draw_networkx_nodes(DG, pos=positions, node_color='lightgrey')
+        nx.draw_networkx_edges(DG, pos=positions)
+
     
     # Similar to pr_nodes()
     def pr_named_tensors(self):
@@ -83,22 +97,27 @@ class BN (object):
             if name_dict[a_node].get_kind() in ('cpt', 'utility'):
                 print(a_node, '\n\t', self.get_potential(a_node),'\n')
 
+
+    #     def que_copy(prefix, queue):
+    #         if not isinstance(queue, list):
+    #             queue = [queue]
+    #         queue.insert(0, prefix)
+    #         return queue
+
+    #     values = potential.p.tolist()
+    #     # Flatten nested lists
+    #     while len(values)  == 1:   # TODO is this test necessary?
+    #         values = values[0]
+    #     print(f' *** {the_var} ***')
+    #     values = [que_copy(s, v) for s, v in zip(states, values)]
+    #     print(tabulate(values, **args))
+
     # Format one-dim tensors 
-    # from collections import deque
-    def pr_one_dim_table(self, the_potential, the_var, **args):
-        def que_copy(prefix, queue):
-            if not isinstance(queue, list):
-                queue = [queue]
-            queue.insert(0, prefix)
-            return queue
-        states = self.n_dict[the_var]['states']
-        values = the_potential.tolist()
-        # Flatten nested lists
-        while len(values)  == 1:   # TODO is this test necessary?
-            values = values[0]
-        print(f' *** {the_var} ***')
-        values = [que_copy(s, v) for s, v in zip(states, values)]
-        print(tabulate(values, **args))
+    from collections import deque
+    def pr_one_dim_table(self, the_var, **args):
+        potential = self.get_node(the_var).potential
+        states = self.get_node(the_var).states
+        pr_table(potential, the_var, states, **args)
     
     ### parse xdsl
 
@@ -116,17 +135,19 @@ class BN (object):
                 state_list.append(element.get('id'))
         return state_list
     
-    def build_potential(self, elements, features):
+    def build_potential(self, elements, f_dict):
         # node_name = a_node.get('id')
-        dim_names = [features['name']]
+        name = [f_dict['name']]
         # Need the parents to dimension the cpt! 
-        parents = features['parents']
-        states = features['states']
-        state_sizes = [len(states)]    
-        dim_names.extend(parents)  
-        for p in parents:
+        dim_names = f_dict['parents'].copy()
+        states = f_dict['states']
+        state_sizes = []   
+        for p in dim_names:
             state_sizes.append(self.get_node(p).state_size())      #list of dimensions
+        # The marginal, (similarly the value) should be the last dim
+        dim_names.extend(name)  
         # print('S', state_sizes)
+        state_sizes.append(len(states))
         try:
            # One dimension, no conditioning 
             potential = new_Potential(elements, state_sizes, dim_names)   
@@ -187,6 +208,23 @@ class BN (object):
 
     # TODO Create an a-cyclic graph from the parents of each node. 
 ### End BN
+
+def pr_table(potential, label, states, **args):
+    ''
+    def que_copy(prefix, queue):
+        if not isinstance(queue, list):
+            queue = [queue]
+        queue.insert(0, prefix)
+        return queue
+        potential = self.get_node(the_var).potential
+        states = self.get_node(the_var).states
+    values = potential.p.tolist()
+    # Flatten nested lists
+    while len(values)  == 1:   # TODO is this test necessary?
+        values = values[0]
+    print(f' *** {label} ***')
+    values = [que_copy(s, v) for s, v in zip(states, values)]
+    print(tabulate(values, **args)) 
 
 
 ### Examples for parsing a xdsl file
@@ -261,6 +299,7 @@ if __name__ == '__main__':
     # BN structure is contained under the node branch
     parsed = extract_net(NETWORK_FILE)
     bn = reap(parsed)
+    bn.pr_one_dim_table('Weather')
     bn.pr_nodes()
     bn.pr_locations()
     print()
