@@ -47,14 +47,14 @@ class BN (object):
     def get_node(self, node_name:str):
         return self.n_dict[node_name]  
 
-    def get_states(self, a_node):
+    def get_states(self, a_node: str):
         return self.n_dict[a_node].states
                 
-    def get_parents(self, a_node):
+    def get_parents(self, a_node: str):
         return self.n_dict[a_node].parents
     
-    def get_potential(self, a_node):
-        'Find the probability np array in the node, and label it using parents in the graph'
+    def get_potential(self, a_node: str):
+        'Find the Potential object in the node'
         # The states of the RV label the columns, so that the matrix is row-markov
         the_cpt = self.get_node(a_node).potential
         return the_cpt
@@ -96,21 +96,6 @@ class BN (object):
         for a_node in name_dict:
             if name_dict[a_node].get_kind() in ('cpt', 'utility'):
                 print(a_node, '\n\t', self.get_potential(a_node),'\n')
-
-
-    #     def que_copy(prefix, queue):
-    #         if not isinstance(queue, list):
-    #             queue = [queue]
-    #         queue.insert(0, prefix)
-    #         return queue
-
-    #     values = potential.p.tolist()
-    #     # Flatten nested lists
-    #     while len(values)  == 1:   # TODO is this test necessary?
-    #         values = values[0]
-    #     print(f' *** {the_var} ***')
-    #     values = [que_copy(s, v) for s, v in zip(states, values)]
-    #     print(tabulate(values, **args))
 
     # Format one-dim tensors 
     from collections import deque

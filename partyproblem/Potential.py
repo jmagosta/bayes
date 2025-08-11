@@ -9,6 +9,8 @@
 from collections import OrderedDict
 import torch
 
+DEBUG = 1
+
 class Potential (object):  # An named tensor
     '''
     CPTs are dimensioned with their marginal probability in the last dimension
@@ -22,11 +24,11 @@ class Potential (object):  # An named tensor
     TODO: The variable name is kept at the node level. 
     '''
 
-    def __init__(self, cpt, shape):
+    def __init__(self, cpt, n_shape):
         ' cpt  - multidim tensor, named_shape: OrderedDict '
         self.p = cpt
-        self.named_shape = shape
-        self.dim_names = shape.keys()
+        self.named_shape = n_shape
+        self.dim_names = n_shape.keys()
 
     def __repr__(self):
         return str(self.named_shape) + '\n\t' + repr(self.p)
@@ -39,15 +41,30 @@ class Potential (object):  # An named tensor
         'The names from the named_shape.'
         return self.named_shape.keys()
     
-    def get_dimensions(self):
+    def get_dim_sizes(self):
         'The size of each dimension in the potential tensor'
+        # Note: no need to duplicate this info in the named shape. 
         return self.p.shape
     
-def new_Potential(prob_list, dim_list, dim_names ):
+    def get_conditionings(self):
+        'the type of the variable'
+        return self.named_shape.items()
+    
+    def pr_potential(self):
+        # the_potential = self.get_potential(a_node)
+        print(f'\tnamed tensor: {list(self.get_named_shape().items())}, {list(self.p.shape)}')
+        print('      ', 
+              str(self.p).replace('tensor(','').replace(')', ''))
+    
+def new_Potential(prob_list, shape_list, dim_names, conditionings = None):
     'factory for creating potential from parsed xml components'
-    p = torch.tensor(prob_list).reshape(dim_list)
-    sh = OrderedDict(zip(dim_names, dim_list))
-    return Potential(p, sh)
+    if conditionings is None:
+        # The default conditionings set the last dimension as
+        # the marginal variable, and all others as conditioning variables.
+        conditionings = ((len(shape_list)-1) * ['c']) + ['m']
+    p = torch.tensor(prob_list).reshape(shape_list)
+    nsh = OrderedDict(zip(dim_names, conditionings))
+    return Potential(p, nsh)
 
 ### ID node #############################################################
 # TODO or inherit from (dict)
@@ -55,7 +72,7 @@ class ID_node (object):
 
     def __init__(self, the_name):
         ''
-        self.label = the_name
+        self.label = the_name    # TODO Duplicated as potential marginal? 
         self.kind = ''
         self.parents = None
         # state size is used to create its potential, when reaping the model file.
@@ -65,32 +82,27 @@ class ID_node (object):
         self.potential = new_Potential([],[0], [] )   #  of type Potential
         self.positions = None   # x,y node centers.  Plotting info.
 
+    ### Accessors
+
     def get_node_name(self):
         return self.label
+    
+    def get_kind(self) -> str:
+        return self.kind
+
+    def get_parents(self):
+        return self.parents
+    
+    def get_states(self):
+        return self.states
 
     def state_size(self):
         return len(self.states) 
     
-    def get_parents(self):
-        return self.parents
-    
-    def get_kind(self) -> str:
-        return self.kind
-    
     def get_potential(self) -> Potential:
         return self.potential
-
-    def pr_potential(self):
-        # the_potential = self.get_potential(a_node)
-        print('\tnamed tensor: ', [k for k in self.get_potential().get_dim_names()])
-        print('      ', str(self.potential.p).replace('tensor(','').replace(')', ''))
-
-    def pr_node(self):
-        print(f'{self.label}: {self.kind}')
-        if self.potential is not None:
-            self.pr_potential()
     
-    ## setters 
+    ### setters 
     def set_kind(self, the_kind):
         self.kind = the_kind
 
@@ -105,6 +117,19 @@ class ID_node (object):
 
     def set_positions(self, the_positions):
         self.positions = the_positions
+
+    def check_node(self):
+        'Consistency check on node contents'
+        if DEBUG: 
+            print('Not implemented')
+
+    ### Print
+    def pr_node(self):
+        print(f'{self.label}: {self.kind}')
+        print(f'\tstates: {self.get_states()}')
+        if self.potential is not None:
+            self.potential.pr_potential()
+
 
 ### Factory
 
@@ -122,19 +147,19 @@ def create_from_dict(the_features):
 if __name__ == '__main__':
 
     # Place margin probabilities in the last dimension
-    # md = new_Potential([1.0, 0.0, 0.1, 0.9, 0.0, 1.0, 0.4, 0.6], 
-    #                    [2,2,2], 
-    #                    ['condition1', 'condition', 'margin'])
     md = new_Potential([0.9,  0.1, 0.0,  1.0, 0.5, 0.5, 0.3, 0.7], 
                        [2,2,2], 
                        ['condition2', 'condition1', 'margin'])
-    print(md)
- 
-
-    nd = ID_node('node1')
-    nd.potential = md
-    nd.pr_potential()
+    print('\n')
+    md.pr_potential()
     print()
+
+    features = dict(name='node1', 
+                    kind='cpt', 
+                    parents = [], 
+                    states = ['False', 'True'],
+                    potential = md)
+    nd = create_from_dict(features)
     nd.pr_node()
 
 #
