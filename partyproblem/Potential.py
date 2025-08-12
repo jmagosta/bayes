@@ -11,7 +11,7 @@ import torch
 
 DEBUG = 1
 
-class Potential (object):  # An named tensor
+class Potential (object):  # A named tensor
     '''
     CPTs are dimensioned with their marginal probability in the last dimension
     and conditioning probabilities dimensions before them. The last dimension
@@ -25,36 +25,60 @@ class Potential (object):  # An named tensor
     '''
 
     def __init__(self, cpt, n_shape):
-        ' cpt  - multidim tensor, named_shape: OrderedDict '
-        self.p = cpt
-        self.named_shape = n_shape
-        self.dim_names = n_shape.keys()
+        ' cpt  - multidim tensor, named_dims: OrderedDict '
+        self.cpt = cpt
+        self.named_dims = n_shape
+        self.dim_names = n_shape.keys()  # remove?  TODO
 
     def __repr__(self):
-        return str(self.named_shape) + '\n\t' + repr(self.p)
+        return str(self.named_dims) + '\n\t' + repr(self.cpt)
     
-    def get_named_shape(self):
+    def get_named_dims(self):
         'The ordered dict of name: dimension, ...'
-        return self.named_shape
+        return self.named_dims
     
     def get_dim_names(self):
-        'The names from the named_shape.'
-        return self.named_shape.keys()
+        'The names from the named_dims.'
+        return self.named_dims.keys()
     
     def get_dim_sizes(self):
         'The size of each dimension in the potential tensor'
         # Note: no need to duplicate this info in the named shape. 
-        return self.p.shape
+        return self.cpt.shape
     
-    def get_conditionings(self):
-        'the type of the variable'
-        return self.named_shape.items()
+    def get_items(self):
+        'the named dimensions as a list, to get the type of the variable'
+        return self.named_dims.items()
+    
+    def get_var_conditioning(self, the_var: str):
+        'get the label, c or m from the variable string name. '
+        return self.named_dims[the_var]
+    
+    def find_var(self, the_var:str):
+        'Look up the index by variable name'
+        return list(self.named_dims.keys()).index(the_var)
+    
+    def index_named_dims(self, index_: int):
+        'Return the dimension item by index'
+        return list(self.named_dims.items())[index_]
+    
+    def permute_named_dims(self, permutation):
+        nd = list(self.named_dims.copy().items())
+        return OrderedDict([nd[k] for k in permutation])
+    
+    def remove_dim(self, the_var:str):
+        'Non destructive deletion'
+        cp = self.named_dims.copy()
+        del cp[the_var]
+        return cp
+
+###  print
     
     def pr_potential(self):
         # the_potential = self.get_potential(a_node)
-        print(f'\tnamed tensor: {list(self.get_named_shape().items())}, {list(self.p.shape)}')
+        print(f'\tnamed tensor: {list(self.get_named_dims().items())}, {list(self.cpt.shape)}')
         print('      ', 
-              str(self.p).replace('tensor(','').replace(')', ''))
+              str(self.cpt).replace('tensor(','').replace(')', ''))
     
 def new_Potential(prob_list, shape_list, dim_names, conditionings = None):
     'factory for creating potential from parsed xml components'
@@ -153,6 +177,14 @@ if __name__ == '__main__':
     print('\n')
     md.pr_potential()
     print()
+
+    # Test named_dim ops.
+    print(md.get_var_conditioning('margin'))
+    print(md.find_var('margin'))
+    print(md.index_named_dims(1))
+    print(md.permute_named_dims([2,1,0]))
+    print(md.remove_dim('margin'))
+
 
     features = dict(name='node1', 
                     kind='cpt', 

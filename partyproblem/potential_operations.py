@@ -16,25 +16,29 @@
 
 # def join_parent(the_conditional, the_parent, name_dict= bn.n_dict):
 
-## ID canonical ops
+### named dimensions operations, for OrderedDict objects (TODO - dicts might also work)
+
+# from Potential import *
+
+### Bayes net solution operations
 
 def absorb_parent(the_parent, the_child):
-    '''In the child potential, if necessary, move the parent dimension just
+    '''This removes conditioning by the parent.
+    In the child potential, if necessary, move the parent dimension just
     before the marginal (typically the last dimension). This makes it
     possible to join the two potentials by multiplication, then to 
     absorb the parent by marginallizing out it's dimension. 
     '''
-    if promote_conditional_dimension(the_parent.get_potential().get_dimensions(), 
-                                     the_child.get_potential().get_dimensions()):
+    if promote_conditional_dimension(the_parent.get_potential().get_named_dims(), 
+                                     the_child.get_potential().get_named_dims()):
         # apply transpose to the parent dimensions
         pass
     # modify the child node TODO Does broadcasting work if the parent has parents? 
     combined_potential = join(the_parent.get_potential(), the_child.get_potential())
-    combined_potential = marginalize(combined_potential, -2)  # TODO Or pass it the name of the parent? 
-    # Create the  new named shape
+    # combined_potential = marginalize(combined_potential, -2)  # TODO Or pass it the name of the parent? 
 
-    # Create the child node without 
-    return ID_node()
+    # TODO modify the child node?
+    return combined_potential # ID_node()
 
 def promote_conditional_dimension(parent_dims, child_dims):
     '''If the matching last dimension of the parent - assumed
@@ -54,10 +58,15 @@ def promote_conditional_dimension(parent_dims, child_dims):
     # its already at the end, so do nothing.
         return None
 
-def join(potential_1, potential_2):
+def join(parent_p, child_p): # parent, child
     '''Lower level function to multiply potentials once dimensions
     are aligned.'''
-    pass
+    cpt = (parent_p.cpt.unsqueeze(-1) * child_p.cpt).sum(-2)
+    # remove the conditioning variable 
+    # -- assumed to be the last (marginal) var of the parent. 
+    named_sh = child_p.remove_dim(parent_p.index_named_dims(-1)[0])
+    return Potential(cpt, named_sh)
+    
 
 def marginalize(the_potential, the_dimension):
     '''Lower level function to marginalize a potential by 
@@ -93,7 +102,6 @@ if __name__ == '__main__':
     parent_node.pr_node()
     child_node.pr_node()
 
-p = promote_conditional_dimension(parent_node.get_potential().get_named_shape(), 
-                                  child_node.get_potential().get_named_shape())
-
-print(p is None)
+    # p = promote_conditional_dimension(parent_node.get_potential().get_named_dims(), 
+    #                                  child_node.get_potential().get_named_dims())
+    print(absorb_parent(parent_node, child_node))
