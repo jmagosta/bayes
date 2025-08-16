@@ -102,9 +102,11 @@ def new_Potential(prob_list, shape_list, dim_names, conditionings = None):
 ### Main
 if __name__ == '__main__':
 
+# Iterate twice thru the list. 
+    probs = [ r for p in [0.9,  0.1, 0.0,  1.0, 0.3, 0.7] for r in (p, 1-p)]
     # Place margin probabilities in the last dimension
-    md = new_Potential([0.9,  0.1, 0.0,  1.0, 0.5, 0.5, 0.3, 0.7], 
-                       [2,2,2], 
+    md = new_Potential(probs, 
+                       [2,3,2], 
                        ['condition2', 'condition1', 'margin'])
     print('\n')
     md.pr_potential()
