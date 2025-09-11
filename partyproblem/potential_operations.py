@@ -117,7 +117,7 @@ if __name__ == '__main__':
    
 
 
-    parent = new_Potential([0.9, 0.1],
+    parent = new_Potential([1.0, 0.0],
                             [2],
                             ['predictor'])
 

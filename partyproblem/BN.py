@@ -10,7 +10,8 @@ import xml.etree.ElementTree as et
 from tabulate import tabulate
 import networkx as nx
 
-from Potential import * 
+# from Potential import * 
+from ID_node import *
 # import Potential
 import numpy as np
 
@@ -100,7 +101,7 @@ class BN (object):
     # Format one-dim tensors 
     from collections import deque
     def pr_one_dim_table(self, the_var, **args):
-        potential = self.get_node(the_var).potential
+        potential = self.get_potential(the_var) # self.get_node(the_var).potential
         states = self.get_node(the_var).states
         pr_table(potential, the_var, states, **args)
     
@@ -203,7 +204,7 @@ def pr_table(potential, label, states, **args):
         return queue
         potential = self.get_node(the_var).potential
         states = self.get_node(the_var).states
-    values = potential.p.tolist()
+    values = potential.cpt.tolist()
     # Flatten nested lists
     while len(values)  == 1:   # TODO is this test necessary?
         values = values[0]
