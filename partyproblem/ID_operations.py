@@ -2,6 +2,8 @@
 # JMA 16 Jul 2025
 # from party_problem_xdsl_bis.ipynb
 
+# TODO - move potential algebra to potential_operations
+
 import torch
 
 import networkx as nx
@@ -67,16 +69,16 @@ def move_named_dim_to_end(the_named_tensor, the_dimension):
         p_transpose = list(range(len(shape)))               # The unperturbed list
         p_transpose.append(p_transpose.pop(the_dim_index))  # Move index to end
         # Transpose CPT
-        x = the_named_tensor.p.permute(p_transpose)
+        x = the_named_tensor.p.permute(p_transpose) #TODO .p -> .cpt
         return Potential(x, shape)
     else:
         # A no op
-        return the_named_tensor 
+        return the_named_tensor.p 
     
 # No problem with mapping single arg functions over tensors!  
 def delta_utility(x, exponand = 0.5, normalize = 50):
-    dims = x.shape
-    u = 4/3*(1 - pow(exponand, (x.p/normalize)))
+    dims = x.get_named_dims()    #x.shape
+    u = 4/3*(1 - pow(exponand, (x.cpt/normalize)))
     return Potential(u, dims)
 
 # TODO not used. 

@@ -57,8 +57,8 @@ class BN (object):
     def get_potential(self, a_node: str):
         'Find the Potential object in the node'
         # The states of the RV label the columns, so that the matrix is row-markov
-        the_cpt = self.get_node(a_node).potential
-        return the_cpt
+        the_p = self.get_node(a_node).potential
+        return the_p
     
     ### Print functions ###
     def pr_influences(self):
@@ -101,7 +101,7 @@ class BN (object):
     # Format one-dim tensors 
     from collections import deque
     def pr_one_dim_table(self, the_var, **args):
-        potential = self.get_potential(the_var) # self.get_node(the_var).potential
+        potential = self.get_potential(the_var) 
         states = self.get_node(the_var).states
         pr_table(potential, the_var, states, **args)
     

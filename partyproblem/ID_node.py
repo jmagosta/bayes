@@ -98,5 +98,32 @@ if __name__ == '__main__':
                     parents = [], 
                     states = ['False', 'True'],
                     potential = md)
+    nc = create_from_dict(features)
+    nc.pr_node()
+
+    # Test utilities
+    d = new_Potential([1, 1], [2], 'decn1')
+    features = dict(name='util1',
+                    kind = 'decision',
+                    parents = [],
+                    states = ['No', 'Yes'],
+                    potential = d)
     nd = create_from_dict(features)
-    nd.pr_node()
+    
+    v = new_Potential([0.0, 1.1], [2,1], ['decn1', 'util'])
+    features = dict(name='pref1', 
+                    kind='utility', 
+                    parents = [d], 
+                    states = ['Value'],
+                    potential = v)
+    nu = create_from_dict(features)
+    nu.pr_node()
+
+    # Apply utility function
+    from ID_operations import *   #TODO move delta_utility to potential? 
+    u =  delta_utility(v)
+    nu.potential = u
+
+    nu.pr_node()
+
+
