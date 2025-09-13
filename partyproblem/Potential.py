@@ -17,11 +17,11 @@ class Potential (object):  # A named tensor
     and conditioning probabilities dimensions before them. The last dimension
     varies by column.  In general, for joint probabilities, the variables 
     making up the joint follow the conditioning variables in the shape list. 
-    TODO: Should there be a flag to distinguish marginal variables?
+    Marginal variables are marked as 'm'
           In IDs, a CPT always has one, and just one marginal dimension, which is the last in the tensor.
           Similarly a value node has a last dimension of size 1, and all others are conditionings. 
     TODO: Should marginal variables also have their state labels included?
-    TODO: The variable name is kept at the node level. 
+    TODO: The variable name is kept at the node level, that can differ from the random variable name. 
     '''
 
     def __init__(self, cpt, n_shape):
@@ -80,8 +80,7 @@ class Potential (object):  # A named tensor
         self.cpt = torch.permute(self.cpt, permutation)
         return self
         
-###  print
-    
+###  print ###
     def pr_potential(self):
         # the_potential = self.get_potential(a_node)
         print(f'\tnamed tensor: {list(self.get_named_dims().items())}, {list(self.cpt.shape)}')
@@ -99,7 +98,7 @@ def new_Potential(prob_list, shape_list, dim_names, conditionings = None):
     nsh = OrderedDict(zip(dim_names, conditionings))
     return Potential(p, nsh)
 
-### Main
+### Main #######################################################
 if __name__ == '__main__':
 
 # Iterate twice thru the list. 

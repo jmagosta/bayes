@@ -2,6 +2,18 @@
 #
 #  JMA 14 Aug 2025
 
+from enum import Enum
+
+class NodeKind(Enum):
+    cpt = 1
+    value = 2
+    decision = 3
+
+def is_nodekind(name):
+    'Check allowed kinds of nodes'
+    # Using a set might be simpler
+    return name in [k.name for k in list(NodeKind)]
+
 from Potential import *
 
 ### ID node #############################################################
@@ -11,7 +23,7 @@ class ID_node (object):
     def __init__(self, the_name):
         ''
         self.label = the_name    # TODO Duplicated as potential marginal? 
-        self.kind = ''
+        self.kind = ''           # TODO enumerated type
         self.parents = None
         # state size is used to create its potential, when reaping the model file.
         # It applies to the potential marginal.
@@ -42,7 +54,11 @@ class ID_node (object):
     
     ### setters 
     def set_kind(self, the_kind):
-        self.kind = the_kind
+        'Check against enum node types'
+        if is_nodekind(the_kind):
+            self.kind = the_kind
+        else:
+            print(f'Error kind: {the_kind} is not valid.')
 
     def set_parents(self, the_parents):
         self.parents = the_parents

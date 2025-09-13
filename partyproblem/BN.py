@@ -3,6 +3,8 @@
 #
 #   JMA April 2025
 
+import sys
+
 # Use to parse xdsl files
 import xml.etree.ElementTree as et
 
@@ -264,12 +266,14 @@ def reap(the_parse_tuple):
             features['potential'] = bn.uniform_potential(features)
         # id_node = ID_node(a_node.get('id'))
         # TODO - all other node types
-        if a_node.tag in ('cpt', 'decision', 'utility'):
+        if is_nodekind(a_node.tag): #a_node.tag in ('cpt', 'decision', 'utility'):
             node_object = create_from_dict(features)
             # The set of  nodes is kept in the BN object dict. 
             # This function assumes that a nodes parents are created before it is. 
             # TODO use BN::get_node() instead
             bn.n_dict[node_object.label] = node_object
+        else:
+            print(f'Unsupported node type: {a_node.tag}', file=sys.stderr )
     for an_ex in the_extensions:
         # Only node types that were parsed will be in bn.dict
         if bn.n_dict.get(an_ex.attrib['id']) is not None:
