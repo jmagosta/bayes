@@ -38,8 +38,8 @@ class Potential (object):  # A named tensor
         return self.named_dims
     
     def get_dim_names(self):
-        'The names from the named_dims.'
-        return self.named_dims.keys()
+        'The list of names from the named_dims.'
+        return list(self.named_dims.keys())
     
     def get_dim_sizes(self):
         'The size of each dimension in the potential tensor'
@@ -97,6 +97,12 @@ def new_Potential(prob_list, shape_list, dim_names, conditionings = None):
     p = torch.tensor(prob_list).reshape(shape_list)
     nsh = OrderedDict(zip(dim_names, conditionings))
     return Potential(p, nsh)
+
+# No problem with mapping single arg functions over tensors!  
+def delta_utility(x, exponand = 0.5, normalize = 50):
+    dims = x.get_named_dims()
+    u = 4/3*(1 - pow(exponand, (x.cpt/normalize)))
+    return Potential(u, dims)
 
 ### Main #######################################################
 if __name__ == '__main__':

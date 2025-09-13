@@ -22,7 +22,7 @@
 		</maux>
 		<cpt id="Adjustor">
 			<state id="absent" />
-			<state id="ppresent" />
+			<state id="present" />
 			<probabilities>0.1 0.9000000000000001</probabilities>
 		</cpt>
 		<cpt id="Detector">

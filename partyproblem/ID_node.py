@@ -6,7 +6,7 @@ from enum import Enum
 
 class NodeKind(Enum):
     cpt = 1
-    value = 2
+    utility = 2
     decision = 3
 
 def is_nodekind(name):
@@ -88,7 +88,7 @@ class ID_node (object):
 ### Factory
 
 def create_from_dict(the_features):
-    ''
+    'Create a node named by the potential marginal'
     the_node = ID_node(the_features['name'])
     the_node.set_kind (the_features['kind'])
     the_node.set_parents (the_features['parents'])
@@ -136,7 +136,7 @@ if __name__ == '__main__':
     nu.pr_node()
 
     # Apply utility function
-    from ID_operations import *   #TODO move delta_utility to potential? 
+    # from ID_operations import *  
     u =  delta_utility(v)
     nu.potential = u
 

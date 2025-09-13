@@ -241,6 +241,8 @@ def reap(the_parse_tuple):
     the_nodes, the_extensions = the_parse_tuple
     for a_node in the_nodes:
         # Create a local container for node features. 
+        if DEBUG: 
+            print(f'reap: {a_node.get('id')}, {a_node.tag}', file=sys.stderr)
         features = dict(name=a_node.get('id'))
         # Set the node kind
         features['kind'] = a_node.tag 
@@ -267,6 +269,8 @@ def reap(the_parse_tuple):
         # id_node = ID_node(a_node.get('id'))
         # TODO - all other node types
         if is_nodekind(a_node.tag): #a_node.tag in ('cpt', 'decision', 'utility'):
+            if DEBUG > 1: 
+                print(f'\tfeatures: {features}')
             node_object = create_from_dict(features)
             # The set of  nodes is kept in the BN object dict. 
             # This function assumes that a nodes parents are created before it is. 

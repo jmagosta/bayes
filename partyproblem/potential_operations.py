@@ -9,8 +9,6 @@
 
 # def marginalize_last(p1, p2):
 
-# def delta_utility(x, exponand = 0.5, normalize = 50):
-
 # def marginalize(child_potential, parent_potential):
 
 # def shift_to_end(the_shape, the_var):
@@ -80,6 +78,20 @@ def promote_conditional_dimension(parent_dims, child_dims):
             # update the conditioning var
             conditioning_var = parent_marginal              
         return cc_permutation, conditioning_var
+    
+def drop_singleton_dimension(the_potential):
+    'Used to reduce utility for taking expectations'
+    # As an alternative, don't add the singleton in the first place
+    # Find the singleton dim, assuming only one singleton index
+    singleton_id = the_potential.get_dim_sizes().index(1)
+    # Get the name of that singleton dim
+    singleton_name = the_potential.get_dim_names()[singleton_id]
+    # Remove it from the dims
+    reduced_dims = the_potential.get_named_dims().copy()
+    del reduced_dims[singleton_name]
+    # x = the_potential.cpt.squeeze(1)
+    return Potential(the_potential.cpt.squeeze(singleton_id), reduced_dims)
+
 
 def join(parent_p, child_p): # parent, child
     '''Lower level function to multiply potentials once dimensions
@@ -89,7 +101,7 @@ def join(parent_p, child_p): # parent, child
     # For now assume only the child has conditionings
     child_named_dim = child_p.get_named_dims().copy()
     # The conditioning var is now also a marginal, assume its second to last
-    child_named_dim[list(parent_p.get_dim_names())[-1]] = 'm'
+    child_named_dim[parent_p.get_dim_names()[-1]] = 'm'
     return Potential(cpt, child_named_dim)
     
 def marginalize(the_potential, absorbed_var):
@@ -103,11 +115,26 @@ def marginalize(the_potential, absorbed_var):
     named_sh = the_potential.remove_dim(absorbed_var)
     return Potential(new_potential, named_sh)  
 
+# No problem with mapping single arg functions over tensors!  
+def delta_utility(a_potential, exponand = 0.5, normalize = 50):
+    dims = a_potential.get_named_dims()
+    # Apply the utility function 
+    u = 4/3*(1 - pow(exponand, (a_potential.cpt/normalize)))
+    return Potential(u, dims)
+
+
 ### Main
 
 if __name__ == '__main__':
 
-    from Potential import * 
+    # from Potential import * 
+
+    utils = [10, 9, 1]
+    u_potential = new_Potential(utils, [3,1], ['uncertainty', 'value'])
+    u_potential.pr_potential()
+
+    drop_singleton_dimension(u_potential).pr_potential()
+    print('\n')
 
     probs = [ r for p in [0.9,  0.1, 0.0,  1.0, 0.3, 0.7] for r in (p, 1-p)]
     # Place margin probabilities in the last dimension
@@ -124,7 +151,7 @@ if __name__ == '__main__':
     parent.pr_potential()
     print('\n')
     child.pr_potential()
-
+    print('\n')
     # p = promote_conditional_dimension(parent_node.get_potential().get_named_dims(), 
     #                                  child_node.get_potential().get_named_dims())
-    print(absorb_parent(parent, child))
+    absorb_parent(parent, child).pr_potential()
