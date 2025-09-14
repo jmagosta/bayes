@@ -47,16 +47,16 @@ class BN (object):
                                    ymax = - pow(2,16))
     ### Accessors ###
 
-    def get_node(self, node_name:str):
+    def get_node(self, node_name:str) -> ID_node:
         return self.n_dict[node_name]  
 
-    def get_states(self, a_node: str):
-        return self.n_dict[a_node].states
+    def get_states(self, a_node: str) -> list:
+        return self.n_dict[a_node].get_states()
                 
     def get_parents(self, a_node: str):
         return self.n_dict[a_node].parents
     
-    def get_potential(self, a_node: str):
+    def get_potential(self, a_node: str) -> Potential:
         'Find the Potential object in the node'
         # The states of the RV label the columns, so that the matrix is row-markov
         the_p = self.get_node(a_node).potential

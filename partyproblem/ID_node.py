@@ -2,6 +2,7 @@
 #
 #  JMA 14 Aug 2025
 
+from typing import List, Dict, Optional
 from enum import Enum
 
 class NodeKind(Enum):
@@ -19,11 +20,14 @@ from Potential import *
 ### ID node #############################################################
 # TODO or inherit from (dict)
 class ID_node (object):
+    # Some type hints
+    kind: NodeKind
+    parents: Optional[list]
 
     def __init__(self, the_name):
         ''
         self.label = the_name    # TODO Duplicated as potential marginal? 
-        self.kind = ''           # TODO enumerated type
+        self.kind = ''           # enumerated type NodeKind
         self.parents = None
         # state size is used to create its potential, when reaping the model file.
         # It applies to the potential marginal.
@@ -37,13 +41,14 @@ class ID_node (object):
     def get_node_name(self):
         return self.label
     
-    def get_kind(self) -> str:
+    def get_kind(self) -> NodeKind:
+        #type: ignore
         return self.kind
 
     def get_parents(self):
         return self.parents
     
-    def get_states(self):
+    def get_states(self) -> list:
         return self.states
 
     def state_size(self):
