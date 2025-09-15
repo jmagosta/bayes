@@ -21,6 +21,8 @@
 
 ### Bayes net solution operations
 
+import numpy as np
+
 from Potential import *
 
 def absorb_parent(the_parent_p: Potential, the_child_p:Potential):
@@ -113,15 +115,27 @@ def marginalize(the_potential, absorbed_var):
     absorbed_dim = the_potential.find_var(absorbed_var)
     new_potential = the_potential.cpt.sum(absorbed_dim)
     named_sh = the_potential.remove_dim(absorbed_var)
-    return Potential(new_potential, named_sh)  
+    return Potential(new_potential, named_sh) 
 
-# No problem with mapping single arg functions over tensors!  
-def delta_utility(a_potential, exponand = 0.5, normalize = 50):
+# No problem with mapping single arg functions over tensors! 
+def named_tensor_apply(a_potential, transformation, **kwargs): 
     dims = a_potential.get_named_dims()
-    # Apply the utility function 
-    u = 4/3*(1 - pow(exponand, (a_potential.cpt/normalize)))
+    # Apply the utility function
+    a_tensor = a_potential.cpt 
+    u = transformation(a_potential.cpt, **kwargs)
+    # u = 4/3*(1 - pow(kwargs['exponand'], (a_potential.cpt/kwargs['normalize'])))
     return Potential(u, dims)
 
+def delta_utility(a_value, **kwargs):
+    'Tranformation from value to utility'
+    # dims = a_potential.get_named_dims()
+    a_utility = 4/3*(1 - pow(kwargs['exponand'], (a_value/kwargs['normalize'])))
+    return a_utility 
+
+def delta_inverse_utility(a_utility, **kwargs):
+    'Inverse transformation from utility back to value'
+    a_value = kwargs['normalize'] * np.log(1 - 3*a_utility/4)/np.log(kwargs['exponand'])
+    return a_value
 
 ### Main
 
@@ -133,6 +147,8 @@ if __name__ == '__main__':
     u_potential = new_Potential(utils, [3,1], ['uncertainty', 'value'])
     u_potential.pr_potential()
 
+    z = named_tensor_apply(u_potential, delta_utility, exponand = 0.5, normalize = 50)
+    print(z)
     drop_singleton_dimension(u_potential).pr_potential()
     print('\n')
 

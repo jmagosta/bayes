@@ -75,11 +75,7 @@ def move_named_dim_to_end(the_named_tensor, the_dimension):
         # A no op
         return the_named_tensor.p 
     
-# No problem with mapping single arg functions over tensors!  
-def delta_utility(x, exponand = 0.5, normalize = 50):
-    dims = x.get_named_dims()    #x.shape
-    u = 4/3*(1 - pow(exponand, (x.cpt/normalize)))
-    return Potential(u, dims)
+
 
 # TODO not used. 
 def marginalize(child_potential, parent_potential):
@@ -114,7 +110,7 @@ def join_parent(the_conditional, the_parent):
     # c_potential = get_potential(the_conditional, name_dict)
     # p_potential = get_potential(the_parent, name_dict)
     # TODO make this work for more than one
-    parent_var = list(the_parent.get_dim_names())[0]
+    parent_var = the_parent.get_dim_names()[0]
     found_dim = dim_index(the_conditional, parent_var)
     # Is found dim not already in the last dim? 
     new_shape = the_parent.shape
@@ -129,6 +125,7 @@ def join_parent(the_conditional, the_parent):
     new_joint =  Potential(the_conditional.p * the_parent.p, new_shape)
     return new_joint
 
+### MAIN ################################################################
 if __name__ == '__main__':
 
     a_potential = new_Potential([0.1, 0.9, 0.4, 0.6], [2,2], ['margin', 'condition'])
