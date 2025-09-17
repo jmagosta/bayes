@@ -81,6 +81,15 @@ def promote_conditional_dimension(parent_dims, child_dims):
             conditioning_var = parent_marginal              
         return cc_permutation, conditioning_var
     
+def marginalize_utility(utility_potential: Potential, conditioning_marginal:Potential) -> Potential:
+    '''Apply a potential (as already marginalized) that conditions the utility. 
+    To obtain the expected utility'''
+    joined_utility = drop_singleton_dimension(utility_potential)
+    joined_utility = join(conditioning_marginal, joined_utility)
+    expected_utility = marginalize(joined_utility, conditioning_marginal.get_marginal_name())
+    return expected_utility
+
+    
 def drop_singleton_dimension(the_potential):
     'Used to reduce utility for taking expectations'
     # As an alternative, don't add the singleton in the first place

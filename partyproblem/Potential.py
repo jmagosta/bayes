@@ -54,6 +54,13 @@ class Potential (object):  # A named tensor
         'get the label, c or m from the variable string name. '
         return self.named_dims[the_var]
     
+    def get_var_by_type(self, the_type = 'm'):
+        'A list of vars selected by type'
+        return [v for v,p in self.get_named_dims().items() if p == the_type]
+    
+    def get_marginal_name(self):
+        return self.get_var_by_type()[0]
+    
     def find_var(self, the_var:str):
         'Look up the index by variable name'
         return list(self.named_dims.keys()).index(the_var)
@@ -115,6 +122,7 @@ if __name__ == '__main__':
                        ['condition2', 'condition1', 'margin'])
     print('\n')
     md.pr_potential()
+    md.get_marginal_name()
     print()
 
     print(md.transpose_named_tensor((2,0,1)))
