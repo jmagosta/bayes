@@ -24,6 +24,10 @@ class Potential (object):  # A named tensor
     TODO: The variable name is kept at the node level, that can differ from the random variable name. 
     '''
 
+    #type hints
+    cpt: torch.Tensor
+    named_dims: OrderedDict
+
     def __init__(self, cpt, n_shape):
         ' cpt  - multidim tensor, named_dims: OrderedDict '
         self.cpt = cpt

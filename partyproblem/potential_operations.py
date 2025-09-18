@@ -81,6 +81,23 @@ def promote_conditional_dimension(parent_dims, child_dims):
             conditioning_var = parent_marginal              
         return cc_permutation, conditioning_var
     
+def condition_decision(the_decn:Potential, the_observation: Potential) -> Potential:
+    '''Add a dimension to increase the rank of the decision 
+     to accommodate the conditioning variable'''
+    decn_dims = the_decn.get_named_dims().copy()
+    decn_cpt = the_decn.cpt
+    # Get new dimension name
+    conditioning_var = the_observation.get_marginal_name()
+    # Create new named dimension
+    new_dims = OrderedDict([(conditioning_var, 'c')])
+    new_dims.update(decn_dims)
+    # Conditioning size
+    last_dim_size = the_observation.get_dim_sizes()[-1]
+    # Extend the decn tensor
+    new_cpt = torch.stack(last_dim_size * [decn_cpt])
+    return Potential(new_cpt,new_dims)
+
+    
 def marginalize_utility(utility_potential: Potential, conditioning_marginal:Potential) -> Potential:
     '''Apply a potential (as already marginalized) that conditions the utility. 
     To obtain the expected utility'''
@@ -150,7 +167,9 @@ def delta_inverse_utility(a_utility, **kwargs):
 
 if __name__ == '__main__':
 
-    # from Potential import * 
+    n_options = 3
+    decn = new_Potential(n_options *[1], [n_options], ['choices'])
+    decn.pr_potential()
 
     utils = [10, 9, 1]
     u_potential = new_Potential(utils, [3,1], ['uncertainty', 'value'])
@@ -167,7 +186,8 @@ if __name__ == '__main__':
                        [2,3,2], 
                        ['predictor', 'condition1', 'margin'])
    
-
+    new_decn = condition_decision(decn, child)
+    new_decn.pr_potential()
 
     parent = new_Potential([1.0, 0.0],
                             [2],
