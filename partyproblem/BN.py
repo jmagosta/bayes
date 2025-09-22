@@ -147,13 +147,15 @@ class BN (object):
 
     def uniform_potential(self, features):
         states = features['states']
-        # TODO lookup in self ()
         parents = features.get('parents')
         if len(parents) == 0:
-            uniform = [1] * len(states)
+            # TODO When is it useful to make this 1/n uniform? 
+            uniform = [0] * len(states)
             dim = [len(states)]
             return new_Potential(uniform, dim, [features['name']])
-        return None
+        else:
+            # Stack dimensions for parents
+            return None
 
     # Note: Node extensions also have the display name of the node, which is an
     # alternative to it's id. 

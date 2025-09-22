@@ -168,7 +168,7 @@ def delta_inverse_utility(a_utility, **kwargs):
 if __name__ == '__main__':
 
     n_options = 3
-    decn = new_Potential(n_options *[1], [n_options], ['choices'])
+    decn = new_Potential(n_options *[0], [n_options], ['choices'])
     decn.pr_potential()
 
     utils = [10, 9, 1]
