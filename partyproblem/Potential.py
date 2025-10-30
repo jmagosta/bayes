@@ -19,7 +19,11 @@ class Potential (object):  # A named tensor
     making up the joint follow the conditioning variables in the shape list. 
     Marginal variables are marked as 'm'
           In IDs, a CPT always has one, and just one marginal dimension, which is the last in the tensor.
-          Similarly a value node has a last dimension of size 1, and all others are conditionings. 
+          Similarly a value node has a last dimension of size 1, and all others are conditionings.
+
+    Note that potentials do not know their parent nodes (just their conditionings) or their states.
+    That info belongs with the ID_Node object. 
+
     TODO: Should marginal variables also have their state labels included?
     TODO: The variable name is kept at the node level, that can differ from the random variable name. 
     '''
@@ -28,11 +32,11 @@ class Potential (object):  # A named tensor
     cpt: torch.Tensor
     named_dims: OrderedDict
 
-    def __init__(self, cpt, n_shape):
+    def __init__(self, cpt, n_dims):
         ' cpt  - multidim tensor, named_dims: OrderedDict '
         self.cpt = cpt
-        self.named_dims = n_shape
-        self.dim_names = n_shape.keys()  # remove?  TODO
+        self.named_dims = n_dims
+        # self.dim_names = n_shape.keys()  # remove?  TODO
 
     def __repr__(self):
         return str(self.named_dims) + '\n\t' + repr(self.cpt)
@@ -40,6 +44,11 @@ class Potential (object):  # A named tensor
     def get_named_dims(self):
         'The ordered dict of name: dimension, ...'
         return self.named_dims
+    
+    def rank(self):
+        'How many variables are there?'
+        #TODO Should agree with the length of the tensor shape
+        return len(self.named_dims)
     
     def get_dim_names(self):
         'The list of names from the named_dims.'
@@ -84,7 +93,7 @@ class Potential (object):  # A named tensor
         return cp
     
     # Destructive change of the Potential
-    def transpose_named_tensor(self, permutation):
+    def permute_named_tensor(self, permutation):
         'Reorder both tensor and dimensions by the permutation'
         self.named_dims = self.permute_named_dims(permutation)
         self.dim_names = self.named_dims.keys()
@@ -102,8 +111,9 @@ class Potential (object):  # A named tensor
 def new_Potential(prob_list, shape_list, dim_names, conditionings = None):
     'factory for creating potential from parsed xml components'
     if conditionings is None:
-        # The default conditionings set the last dimension as
+        # The default conditionings sets the last dimension as
         # the marginal variable, and all others as conditioning variables.
+        # TODO use "d" and "v" as conditioning types
         conditionings = ((len(shape_list)-1) * ['c']) + ['m']
     p = torch.tensor(prob_list).reshape(shape_list)
     nsh = OrderedDict(zip(dim_names, conditionings))
@@ -118,18 +128,22 @@ def delta_utility(x, exponand = 0.5, normalize = 50):
 ### Main #######################################################
 if __name__ == '__main__':
 
+    m1 = Potential(torch.tensor([0.2, 0.8]), OrderedDict([('a_var','m')]))
+    m1.pr_potential()
+
 # Iterate twice thru the list. 
     probs = [ r for p in [0.9,  0.1, 0.0,  1.0, 0.3, 0.7] for r in (p, 1-p)]
     # Place margin probabilities in the last dimension
     md = new_Potential(probs, 
                        [2,3,2], 
                        ['condition2', 'condition1', 'margin'])
+    print(f'rank: {md.rank()}')
     print('\n')
     md.pr_potential()
     md.get_marginal_name()
     print()
 
-    print(md.transpose_named_tensor((2,0,1)))
+    print(md.permute_named_tensor((2,0,1)))
 
     # Test named_dim ops.
     print(md.get_var_conditioning('margin'))

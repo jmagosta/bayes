@@ -82,7 +82,7 @@ class BN (object):
         for n, loc in bn.center_dict.items():
             print(f'{n}: \t{loc}')
 
-    # Use the extracted dimensions to plut with networkx
+    # Use the extracted dimensions to plot with networkx
     def pr_network(self):
         positions = self.center_dict
         DG = self.network
@@ -91,13 +91,19 @@ class BN (object):
         nx.draw_networkx_nodes(DG, pos=positions, node_color='lightgrey')
         nx.draw_networkx_edges(DG, pos=positions)
 
+    def remove_node(self, the_node):
+        '''Remove the node from the network, updating the parents. 
+        (Assuming the Potentials have already been updated by removing the node's variable)'''
+        # TODO networkx operations
+        return None
+
     
     # Similar to pr_nodes()
     def pr_named_tensors(self):
         'Show all the model tensors'
         name_dict = self.n_dict
         for a_node in name_dict:
-            if name_dict[a_node].get_kind() in ('cpt', 'utility'):
+            if name_dict[a_node].get_kind() in ('cpt', 'decision', 'utility'):
                 print(a_node, '\n\t', self.get_potential(a_node),'\n')
 
     # Format one-dim tensors 
@@ -148,11 +154,12 @@ class BN (object):
     def uniform_potential(self, features):
         states = features['states']
         parents = features.get('parents')
+        state_cnt = len(states)
         if len(parents) == 0:
             # TODO When is it useful to make this 1/n uniform? 
-            uniform = [0] * len(states)
-            dim = [len(states)]
-            return new_Potential(uniform, dim, [features['name']])
+            uniform = [1/state_cnt] * state_cnt
+            # dim = [len(states)]
+            return new_Potential(uniform, [state_cnt], [features['name']])
         else:
             # Stack dimensions for parents
             return None
