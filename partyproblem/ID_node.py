@@ -20,6 +20,7 @@ from Potential import *
 ### ID node #############################################################
 # TODO or inherit from (dict)
 class ID_node (object):
+    'A couple of fields needed for the BN that do not belong to the Potential '
     # Some type hints
     kind: NodeKind
     parents: Optional[list]
@@ -34,7 +35,7 @@ class ID_node (object):
         # But is not stored with the potential.  
         self.states = []
         self.potential = new_Potential([],[0], [] )   #  of type Potential
-        self.positions = None   # x,y node centers.  Plotting info.
+        self.positions = None   # x,y node centers.  Plotting info. TODO is this kept in the BN instead? 
 
     ### Accessors
 
@@ -86,6 +87,7 @@ class ID_node (object):
     def pr_node(self):
         print(f'{self.label}: {self.kind}')
         print(f'\tstates: {self.get_states()}')
+        print(f'\tparents: {self.get_parents()}')
         if self.potential is not None:
             self.potential.pr_potential()
 
@@ -108,43 +110,52 @@ if __name__ == '__main__':
     # Iterate twice thru the list. 
     probs = [ r for p in [0.9,  0.1, 0.0,  1.0, 0.3, 0.7] for r in (p, 1-p)]
     # Place margin probabilities in the last dimension
+    print('\nPotential:')
     md = new_Potential(probs,
                        [2,3,2], 
                        ['condition2', 'condition1', 'margin'])
     md.pr_potential()
     print()
 
+    # TODO -set parents. 
     features = dict(name='node1', 
                     kind='cpt', 
-                    parents = [], 
+                    parents = [],  # TODO Copy from Potential? 
                     states = ['False', 'True'],
                     potential = md)
     nc = create_from_dict(features)
     nc.pr_node()
+    print()
 
     # Test utilities
-    d = new_Potential([1, 1], [2], 'decn1')
-    features = dict(name='util1',
+    state_cnt = len(features['states'])
+    uniform = [1/state_cnt] * state_cnt
+    d = new_Potential(uniform, [state_cnt], ['decn1'])
+    features = dict(name='decn1',
                     kind = 'decision',
                     parents = [],
                     states = ['No', 'Yes'],
                     potential = d)
     nd = create_from_dict(features)
-    
+    nd
+    nd.pr_node()
+    print()
+
     v = new_Potential([0.0, 1.1], [2,1], ['decn1', 'util'])
     features = dict(name='pref1', 
                     kind='utility', 
-                    parents = [d], 
+                    parents = [nd.label], 
                     states = ['Value'],
                     potential = v)
     nu = create_from_dict(features)
     nu.pr_node()
+    print()
 
     # Apply utility function
     # from ID_operations import *  
     u =  delta_utility(v)
     nu.potential = u
-
+    print('\nApply utility function:')
     nu.pr_node()
 
 

@@ -62,7 +62,55 @@ class BN (object):
         the_p = self.get_node(a_node).potential
         return the_p
     
+    ### Modify network
+    def remove_node(self, the_node, show_graph=False):
+        '''Remove the node from the network, updating the parents by connecting the node's parents to its children.
+        (Assuming the Potentials have already been updated for this variable
+        by adjusting Potential conditionings.)'''
+
+        if the_node not in self.n_dict:
+            print(f"Error, there is no node {the_node}")
+            return None
+
+        # Get node's predecessors (parents) and successors (children)
+        parents = list(self.network.predecessors(the_node))
+        children = list(self.network.successors(the_node))
+
+        # Edge case - Multiple parents and no children. 
+        # Removing the node will disconnect the network
+        if len(children) == 0 and len(parents) > 1:
+            print(f'Warning: Multiple parents to childless node: {the_node}\n'
+                  'Removal will disconnect the network')
+
+        # Add edges from each parent to each child to bypass the node
+        for parent in parents:
+            for child in children:
+                self.network.add_edge(parent, child)
+                # Update the parents lists of children to include 
+                # the bypassed parents for child in children:
+                if parent not in self.n_dict[child].parents:
+                    self.n_dict[child].parents.append(parent)
+
+        # Remove the node from the graph
+        self.network.remove_node(the_node)
+        # Remove the node from the node dictionary
+        del self.n_dict[the_node]
+        # Remove node position
+        del self.center_dict[the_node]
+        # Update the edges list
+        self.edges = list(self.network.edges())
+        # Recompute the topological order
+        self.node_order = list(nx.topological_sort(self.network))
+        if show_graph:
+            self.pr_network()
+        return None
+
+    
     ### Print functions ###
+    def pr_order(self):
+        'Ordering of the node that respects the DAGs partial ordering.'
+        print('Topological sort: ', self.node_order)
+
     def pr_influences(self):
         'Print both the nodes parents and children.'
         print('Node\t{ancestors}\n\t{descendants}\n')
@@ -76,6 +124,7 @@ class BN (object):
             if DEBUG: print(f'>>> {k} <<<')
             node.pr_node()
             print()
+        self.pr_order()
 
     def pr_locations(self):
         print('\nNode Centers:')
@@ -90,13 +139,6 @@ class BN (object):
         nx.draw_networkx_labels(DG, pos=positions)
         nx.draw_networkx_nodes(DG, pos=positions, node_color='lightgrey')
         nx.draw_networkx_edges(DG, pos=positions)
-
-    def remove_node(self, the_node):
-        '''Remove the node from the network, updating the parents. 
-        (Assuming the Potentials have already been updated by removing the node's variable)'''
-        # TODO networkx operations
-        return None
-
     
     # Similar to pr_nodes()
     def pr_named_tensors(self):
@@ -129,6 +171,7 @@ class BN (object):
                 state_list.append(element.get('id'))
         return state_list
     
+    # TODO move this to ID_node? 
     def build_potential(self, elements, f_dict):
         # node_name = a_node.get('id')
         name = [f_dict['name']]
@@ -304,9 +347,10 @@ if __name__ == '__main__':
     bn = reap(parsed)
     bn.pr_one_dim_table('Weather')
     bn.pr_nodes()
+    bn.remove_node('Adjustor')
+    bn.pr_order()
+    bn.remove_node('Detector')
+    bn.pr_order()
     bn.pr_locations()
     print()
     bn.pr_named_tensors()
-
-
-    
