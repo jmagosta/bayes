@@ -99,6 +99,11 @@ class Potential (object):  # A named tensor
         self.dim_names = self.named_dims.keys()
         self.cpt = torch.permute(self.cpt, permutation)
         return self
+    
+    def add_unit_dim(self, position, label):
+        'Modify the named dimensions with an addition unit dimension'
+        # Necessary to multiply together two Potentials
+        self.cpt = self.cpt.unsqueeze(position)
         
 ###  print ###
     def pr_potential(self):

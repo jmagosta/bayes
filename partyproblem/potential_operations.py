@@ -141,7 +141,9 @@ def swap_indexes(i_1, i_2, indexes):
 
 def condition_decision(the_decn:Potential, the_observation: Potential) -> Potential:
     '''Add a dimension to increase the rank of the decision 
-     to accommodate the conditioning variable'''
+     to accommodate the conditioning variable.  The added dimension
+     replicates the tensor along a  new dimension, using the marginal
+     name of the conditioning variable as a new decision conditioning variable.'''
     # TODO What if there are multiple conditioning vars?
     # To modify the model inflight for VOI - computations, versus creating a new model.
     decn_dims = the_decn.get_named_dims().copy()
@@ -173,7 +175,7 @@ def marginalize_utility(utility_potential: Potential, conditioning_marginal:Pote
     expected_utility = marginalize(joined_utility, conditioning_marginal.get_marginal_name())
     return expected_utility
 
-def gemini_maximize_utility(expected_utility: Potential, decision_var: str) -> (Potential, Potential):
+def gemini_maximize_utility(expected_utility: Potential, decision_var: str) -> tuple[Potential, Potential]:
     '''Find the maximum utility over a decision variable.
     This operation is used to optimize a decision based on expected utility.
     It removes the decision variable from the potential, retaining the maximum
@@ -257,7 +259,7 @@ def delta_inverse_utility(a_utility, **kwargs):
 if __name__ == '__main__':
 
     n_options = 3
-    decn = new_Potential(n_options *[0], [n_options], ['choices'])
+    decn = new_Potential(n_options *[1/n_options], [n_options], ['choices'])
     decn.pr_potential()
     print()
 
@@ -276,6 +278,9 @@ if __name__ == '__main__':
     child = new_Potential(probs, 
                        [2,3,2], 
                        ['predictor', 'condition1', 'margin'])
+    print('child:')
+    child.pr_potential()
+    print()
    
     new_decn = condition_decision(decn, child)
     print('\nConditioned decision')
@@ -286,9 +291,13 @@ if __name__ == '__main__':
                             ['predictor'])
     print('\nParent: ')
     parent.pr_potential()
-    print('\nChild: ')
-    child.pr_potential()
-    print('\nRemove unconditioned parent')
+
+    two_var_conditioned_decn = condition_decision(new_decn, parent)
+    print('\nConditioned on "parent" also: ')
+    two_var_conditioned_decn.pr_potential()
+    print()
+
+    print('\nMarginalize parent from child')
     new_child = absorb_parent(parent, child)
     if new_child is not None:
         new_child.pr_potential()
