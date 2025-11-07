@@ -44,18 +44,22 @@ def absorb_parent(the_parent_p: Potential, the_child_p:Potential):
     '''
     # Simple case: parent has no conditionings. 
     if the_parent_p.rank() == 1:
-        updated_child_permutation, conditioning_var =\
-               promote_conditional_dimension(the_parent_p.get_named_dims(),\
-                                              the_child_p.get_named_dims()) 
-        if updated_child_permutation is None:
-        # Its  not a parent of child, return the unmodified child 
-        # (TODO: would this ever happen?)
-            return the_child_p
-        # Else if parent is not already the second to last dim
-        elif updated_child_permutation != list(range(the_child_p.rank())):
-            the_child_p = the_child_p.permute_named_tensor(updated_child_permutation)
-        combined_potential = join(the_parent_p, the_child_p)
-        reduced_potential = marginalize_out(combined_potential, conditioning_var)
+        if the_child_p.cpt.shape[-1] != 1:
+            updated_child_permutation, conditioning_var =\
+                promote_conditional_dimension(the_parent_p.get_named_dims(),\
+                                                the_child_p.get_named_dims()) 
+            if updated_child_permutation is None:
+            # Its  not a parent of child, return the unmodified child 
+            # (TODO: would this ever happen?)
+                return the_child_p
+            # Else if parent is not already the second to last dim
+            elif updated_child_permutation != list(range(the_child_p.rank())):
+                the_child_p = the_child_p.permute_named_tensor(updated_child_permutation)
+            combined_potential = join(the_parent_p, the_child_p)
+            reduced_potential = marginalize_out(combined_potential, conditioning_var)
+        else: # Special case for utility nodes that have a unit last dimension
+            reduced_potential = marginalize_utility( the_child_p, the_parent_p)
+
     else:  
         print(f'Absorb_parent(): Not implemented when parent {the_parent_p.get_named_dims()} has conditionings')
         reduced_potential = None
@@ -167,13 +171,28 @@ def condition_probability(joint_p: Potential, conditioning_p: Potential) -> Pote
     return Potential(conditioned_p, conditioned_dims)
 
     
-def marginalize_utility(utility_potential: Potential, conditioning_marginal:Potential) -> Potential:
-    '''Apply a potential (as already marginalized) that conditions the utility. 
-    To obtain the expected utility'''
-    joined_utility = drop_singleton_dimension(utility_potential)
-    joined_utility = join(conditioning_marginal, joined_utility)
-    expected_utility = marginalize(joined_utility, conditioning_marginal.get_marginal_name())
-    return expected_utility
+def marginalize_utility(u_potential: Potential, its_parent:Potential) -> Potential:
+    '''Apply a potential assumed to be without parents that conditions the utility 
+    to obtain the expected utility. The utility may have other parents, so the result is conditional
+    on the remaining parents. '''
+    unpeeled_utility = drop_singleton_dimension(u_potential)
+    # Permute the result to promote the parent to the last place. 
+    u_named_dims = unpeeled_utility.get_named_dims()
+    child_conditional_vars = unpeeled_utility.get_dim_names()
+    # Check that the parent is well formed
+    if not its_parent.check_last_dim():
+        print('Error: parent {its_parent.get_marginal_name() is not well formed.}')
+    parent_marginal = its_parent.get_marginal_name()
+    # Is the parent marginal last? 
+    if unpeeled_utility.get_dim_names()[-1] != parent_marginal:
+        # permute the u_potential var
+        pass
+    else:
+        # join cpts
+        joint = unpeeled_utility.cpt * its_parent.cpt
+        cond_expected_utility = joint.sum(-1)
+        reduced_dims = its_parent.remove_dim(parent_marginal)
+    return Potential(cond_expected_utility, reduced_dims)
 
 def gemini_maximize_utility(expected_utility: Potential, decision_var: str) -> tuple[Potential, Potential]:
     '''Find the maximum utility over a decision variable.
@@ -233,7 +252,8 @@ def named_tensor_apply(a_potential, transformation, **kwargs):
 def drop_singleton_dimension(the_potential):
     'Used to reduce utility for taking expectations'
     # As an alternative, don't add the singleton in the first place
-    # Find the singleton dim, assuming only one singleton index
+    # Find the singleton dim, assuming only one singleton index,
+    # not necessarily the last dimension. 
     singleton_id = the_potential.get_dim_sizes().index(1)
     # Get the name of that singleton dim
     singleton_name = the_potential.get_dim_names()[singleton_id]
@@ -263,8 +283,8 @@ if __name__ == '__main__':
     decn.pr_potential()
     print()
 
-    utils = [10, 9, 1]
-    u_potential = new_Potential(utils, [3,1], ['uncertainty', 'value'])
+    utils = [10, 10,10]
+    u_potential = new_Potential(utils, [n_options ,1], ['uncertainty', 'value'])
     u_potential.pr_potential()
     print()
 
@@ -273,14 +293,23 @@ if __name__ == '__main__':
     drop_singleton_dimension(u_potential).pr_potential()
     print('\n')
 
-    probs = [ r for p in [0.9,  0.1, 0.0,  1.0, 0.3, 0.7] for r in (p, 1-p)]
+    probs = []
+    for p in [0.9, 0.3, 0.7, 0.6]:
+        for r in (p, 1 - p - 0.1, 0.1):
+            probs.append(r)
+
+    # probs = [ r for p in [0.9,  0.1, 0.0,  1.0, 0.3, 0.7] for r in (p, 1-p)]
     # Place margin probabilities in the last dimension
     child = new_Potential(probs, 
-                       [2,3,2], 
-                       ['predictor', 'condition1', 'margin'])
+                       [2,2,3], 
+                       ['predictor', 'condition1', 'uncertainty'])
     print('child:')
     child.pr_potential()
     print()
+
+    marginalize_utility(u_potential, child).pr_potential()
+
+
    
     new_decn = condition_decision(decn, child)
     print('\nConditioned decision')
