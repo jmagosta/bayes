@@ -125,7 +125,7 @@ def promote_conditional_dimension(parent_dims, child_dims, destined_position = 1
     parent_marginal = [c_var[0] for c_var in parent_dims.items() if c_var[1] in ('m', 'v')][0]  #TODO 'v' can never be a parent. 
     # It must be one of the conditioning variables of the child:
     if not (parent_marginal in child_conditionals):
-        print(f'{parent_marginal} not contained in {child_conditionals} conditionals' )
+        print(f'WARNING: {parent_marginal} not contained in {child_conditionals} conditionals' )
         # Not a parent, make no change to the child
         return None, None
     else:
@@ -304,11 +304,7 @@ def drop_final_singleton_dimension(the_potential):
 
 if __name__ == '__main__':
 
-    n_options = 3
-    decn = new_Potential(n_options *[1/n_options], [n_options], ['location'])
-    decn.pr_potential()
-    print()
-
+    print('\n\nMarginalization ', '#'*20)
     probs = []
     for p in [0.9, 0.3]:
         for r in (p, 1 - p - 0.1, 0.1):
@@ -318,7 +314,7 @@ if __name__ == '__main__':
     # Place margin probabilities in the last dimension
     child = new_Potential(probs, 
                        [2,3], 
-                       ['condition1', 'uncertainty'])
+                       ['predictor', 'uncertainty'])
     print('child:')
     child.pr_potential()
     print()
@@ -329,10 +325,28 @@ if __name__ == '__main__':
     print('\nParent: ')
     parent.pr_potential()
 
+    print('\nMarginalize parent from child')
+    new_child = absorb_parent(parent, child)
+    if new_child is not None:
+        new_child.pr_potential()
+
+    print('\nAdd Decision predecessors ', '#'*20)
+    n_options = 3
+    decn = new_Potential(n_options *[1/n_options], [n_options], ['location'])
+    decn.pr_potential()
+    print()
+
     new_decn = condition_decision(decn, parent)
     print('\nConditioned decision')
     new_decn.pr_potential()
 
+    print('\nAdd multiple predecessors', )
+    two_var_conditioned_decn = condition_decision(new_decn, parent)
+    print('\nConditioned on "parent" also: ')
+    two_var_conditioned_decn.pr_potential()
+    print()
+
+    print('\nValue to utility and inverse', '#'*20)
     utils = [1, 10,9, 6,6,0]
     u_potential = new_Potential(utils, [2, n_options,  1], ['uncertainty', 'location', 'value'])
     u_potential.pr_potential()
@@ -346,27 +360,24 @@ if __name__ == '__main__':
     drop_final_singleton_dimension(u_potential).pr_potential()
     print('\n')
 
-    root_parent = new_Potential([0.7, 0.2, 0.1], [3], ['uncertainty'])
+    # TODO Make decision for utility with no parents
+    print('\nMarginalize utility', '#'*20)
+    utils = [1, 10, 0]
+    u_potential = new_Potential(utils, [ n_options,  1], ['location', 'value'])
+    u_potential.pr_potential()
+    print('Expected utility: ')
+    marginalize_utility(u_potential, Potential(torch.empty(0), OrderedDict())).pr_potential()
+
+    print('\nMarginalize parent from utility', '#'*10)
+    root_parent = new_Potential([0.7, 0.3], [2], ['uncertainty'])
     print('parent')
     root_parent.pr_potential()
-    print('expected utility: ')
+    # TODO - What indicates a potential is a utility, except the lack of 'm'?
+    #        will this be a problem with functional value nodes? 
+    print('Expected utility: ')
     marginalize_utility(u_potential, root_parent).pr_potential()
 
-
- 
-
     # TODO marginalize utility for conditioned parents. 
-    # marginalize_utility(u_potential, child).pr_potential()
 
 
 
-
-    two_var_conditioned_decn = condition_decision(new_decn, parent)
-    print('\nConditioned on "parent" also: ')
-    two_var_conditioned_decn.pr_potential()
-    print()
-
-    print('\nMarginalize parent from child')
-    new_child = absorb_parent(parent, child)
-    if new_child is not None:
-        new_child.pr_potential()
