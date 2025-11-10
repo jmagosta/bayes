@@ -17,9 +17,12 @@ from ID_node import *
 # import Potential
 import numpy as np
 
+# 
+from potential_operations import condition_decision
+
 # from tabulate import tabulate
 import matplotlib.pyplot as plt
-import seaborn as sn 
+# import seaborn as sn 
 
 DEBUG = 1
 
@@ -198,14 +201,14 @@ class BN (object):
         states = features['states']
         parents = features.get('parents')
         state_cnt = len(states)
+        uniform = [1/state_cnt] * state_cnt
+        unconditioned_d = new_Potential(uniform, [state_cnt], [features['name']])
         if len(parents) == 0:
-            # TODO When is it useful to make this 1/n uniform? 
-            uniform = [1/state_cnt] * state_cnt
-            # dim = [len(states)]
-            return new_Potential(uniform, [state_cnt], [features['name']])
+            return unconditioned_d
         else:
             # Stack dimensions for parents
-            return None
+            # TODO we need the parents names and sizes
+            return condition_decision(unconditioned_d, the_observation: Potential)
 
     # Note: Node extensions also have the display name of the node, which is an
     # alternative to it's id. 

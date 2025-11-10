@@ -180,18 +180,18 @@ def marginalize_utility(u_potential: Potential, its_parent:Potential) -> Potenti
     to obtain the expected utility. The utility may have other parents, so the result is conditional
     on the remaining parents. '''
     unpeeled_utility = drop_final_singleton_dimension(u_potential)
-    # Permute the result to promote the parent to the last place. 
-    u_named_dims = unpeeled_utility.get_named_dims()
-    child_conditional_vars = unpeeled_utility.get_dim_names()
+  
     # Check that the parent is well formed - m,v,or d in last place only. 
     if not its_parent.check_last_dim():
         print('Error: parent {its_parent.get_marginal_name() is not well formed.}')
     parent_marginal = its_parent.get_marginal_name()
     # Is the parent marginal last? 
     if unpeeled_utility.get_dim_names()[-1] != parent_marginal:
-        # permute the u_potential var
+        # Permute the result to promote the parent to the last place
+        # in u_potential
         child_permutation, conditioning_var =\
               promote_conditional_dimension(its_parent.get_named_dims(), unpeeled_utility.get_named_dims())
+        # assert conditioning_var == parent_marginal
         unpeeled_utility = unpeeled_utility.permute_named_tensor(child_permutation) 
     # join cpts
     joint = unpeeled_utility.cpt * its_parent.cpt
@@ -199,7 +199,7 @@ def marginalize_utility(u_potential: Potential, its_parent:Potential) -> Potenti
     reduced_dims = unpeeled_utility.remove_dim(parent_marginal)
     return Potential(cond_expected_utility, reduced_dims)
 
-def gemini_maximize_utility(expected_utility: Potential, decision_var: str) -> tuple[Potential, Potential]:
+def maximize_utility(expected_utility: Potential, decision_p: Potential) -> tuple[Potential, Potential]:
     '''Find the maximum utility over a decision variable.
     This operation is used to optimize a decision based on expected utility.
     It removes the decision variable from the potential, retaining the maximum
@@ -209,14 +209,29 @@ def gemini_maximize_utility(expected_utility: Potential, decision_var: str) -> t
     1. max_utility_potential: The utility potential with the decision variable marginalized out by maximization.
     2. policy_potential: A potential representing the optimal policy, i.e., the index of the
        decision state that yields the maximum utility for each conditioning state.
+       (This should replace the decision variable potential. )
     '''
-    decision_dim_idx = expected_utility.find_var(decision_var)
-    max_utility_values, policy_indices = torch.max(expected_utility.cpt, dim=decision_dim_idx)
+    # TODO run this without a conditiong var. 
+    # Check that the dims of the decision_p match the utility 
+    unpeeled_utility = drop_final_singleton_dimension(u_potential) 
+    if unpeeled_utility.get_dim_sizes() != decision_p.get_dim_sizes():
+        print(f'Error: utility shape {unpeeled_utility.get_dim_sizes()} does not match {decision_p.get_dim_sizes()}')
+        return None, None
+    # Find the last decision variable as the one to maximize over. 
+    decision_var = decision_p.get_marginal_name()
+    # TODO Check if the utility dims need to move the decn var to last place 
+    decision_dim_idx = unpeeled_utility.find_var(decision_var)
+    max_utility_values, policy_indicies = torch.max(expected_utility.cpt, dim=decision_dim_idx)
 
-    max_utility_dims = expected_utility.remove_dim(decision_var)
+    max_utility_dims = unpeeled_utility.remove_dim(decision_var)
     max_utility_potential = Potential(max_utility_values, max_utility_dims)
-    policy_potential = Potential(policy_indices.float(), max_utility_dims) # Policy stored as float tensor
-    return max_utility_potential, policy_potential
+    # TODO Reflate the policy indicies as a 0 - 1 matrix. Use the decn named dims instead
+    max_policy = torch.zeros(decision_p.get_dim_sizes())
+    for choice in range(list(decision_p.cpt.shape)[0]):  #TODO Assumes only one conditioning var. 
+        max_policy[choice, policy_indicies[choice]] = 1
+
+    decision_p.policy = max_policy 
+    return max_utility_potential, decision_p
     
 
 def join(parent_p, child_p): # parent, child
@@ -259,6 +274,8 @@ def drop_final_singleton_dimension(the_potential):
     # As an alternative, don't add the singleton in the first place
     # Find the singleton dim, assuming only one singleton index,
     # not necessarily the last dimension. 
+    # TODO - I suppose the only reason to have the singleton dimension
+    #        is to mark tensors that are values, not probs. 
     final_dim = the_potential.get_dim_sizes()[-1]
     if final_dim != 1:
         # Presume the utility has already been pruned of the final dim 
@@ -272,30 +289,57 @@ def drop_final_singleton_dimension(the_potential):
     # x = the_potential.cpt.squeeze(1)
     return Potential(the_potential.cpt.squeeze(-1), reduced_dims)
 
-def delta_utility(a_value, **kwargs):
-    'Tranformation from value to utility'
-    # dims = a_potential.get_named_dims()
-    a_utility = 4/3*(1 - pow(kwargs['exponand'], (a_value/kwargs['normalize'])))
-    return a_utility 
+# def delta_utility(a_value, **kwargs):
+#     'Transformation from value to utility'
+#     # dims = a_potential.get_named_dims()
+#     a_utility = 4/3*(1 - pow(kwargs['exponand'], (a_value/kwargs['normalize'])))
+#     return a_utility 
 
-def delta_inverse_utility(a_utility, **kwargs):
-    'Inverse transformation from utility back to value'
-    a_value = kwargs['normalize'] * np.log(1 - 3*a_utility/4)/np.log(kwargs['exponand'])
-    return a_value
+# def delta_inverse_utility(a_utility, **kwargs):
+#     'Inverse transformation from utility back to value'
+#     a_value = kwargs['normalize'] * np.log(1 - 3*a_utility/4)/np.log(kwargs['exponand'])
+#     return a_value
 
 ### Main
 
 if __name__ == '__main__':
 
     n_options = 3
-    decn = new_Potential(n_options *[1/n_options], [n_options], ['choices'])
+    decn = new_Potential(n_options *[1/n_options], [n_options], ['location'])
     decn.pr_potential()
     print()
 
-    utils = [10, 10,10, 6,6,6]
-    u_potential = new_Potential(utils, [n_options, 2, 1], ['uncertainty', 'condition1', 'value'])
+    probs = []
+    for p in [0.9, 0.3]:
+        for r in (p, 1 - p - 0.1, 0.1):
+            probs.append(round(r,3))
+
+    # probs = [ r for p in [0.9,  0.1, 0.0,  1.0, 0.3, 0.7] for r in (p, 1-p)]
+    # Place margin probabilities in the last dimension
+    child = new_Potential(probs, 
+                       [2,3], 
+                       ['condition1', 'uncertainty'])
+    print('child:')
+    child.pr_potential()
+    print()
+
+    parent = new_Potential([0.2, 0.8],
+                            [2],
+                            ['predictor'])
+    print('\nParent: ')
+    parent.pr_potential()
+
+    new_decn = condition_decision(decn, parent)
+    print('\nConditioned decision')
+    new_decn.pr_potential()
+
+    utils = [1, 10,9, 6,6,0]
+    u_potential = new_Potential(utils, [2, n_options,  1], ['uncertainty', 'location', 'value'])
     u_potential.pr_potential()
     print()
+
+    ### decision 
+    ex_p, policy_p = maximize_utility(u_potential, new_decn)
 
     z = named_tensor_apply(u_potential, delta_utility, exponand = 0.5, normalize = 50)
     print(z)
@@ -309,32 +353,13 @@ if __name__ == '__main__':
     marginalize_utility(u_potential, root_parent).pr_potential()
 
 
-    probs = []
-    for p in [0.9, 0.3, 0.7, 0.6]:
-        for r in (p, 1 - p - 0.1, 0.1):
-            probs.append(round(r,3))
-
-    # probs = [ r for p in [0.9,  0.1, 0.0,  1.0, 0.3, 0.7] for r in (p, 1-p)]
-    # Place margin probabilities in the last dimension
-    child = new_Potential(probs, 
-                       [2,2,3], 
-                       ['predictor', 'condition1', 'uncertainty'])
-    print('child:')
-    child.pr_potential()
-    print()
+ 
 
     # TODO marginalize utility for conditioned parents. 
     # marginalize_utility(u_potential, child).pr_potential()
 
-    parent = new_Potential([0.5, 0.5],
-                            [2],
-                            ['predictor'])
-    print('\nParent: ')
-    parent.pr_potential()
 
-    new_decn = condition_decision(decn, child)
-    print('\nConditioned decision')
-    new_decn.pr_potential()
+
 
     two_var_conditioned_decn = condition_decision(new_decn, parent)
     print('\nConditioned on "parent" also: ')

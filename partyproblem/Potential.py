@@ -31,12 +31,13 @@ class Potential (object):  # A named tensor
     #type hints
     cpt: torch.Tensor
     named_dims: OrderedDict
+    policy: torch.Tensor
 
     def __init__(self, cpt, n_dims):
         ' cpt  - multidim tensor, named_dims: OrderedDict '
         self.cpt = cpt
         self.named_dims = n_dims
-        # self.dim_names = n_shape.keys()  # remove?  TODO
+        self.policy = None         #created by maximize utility. Same dims as the cpt
 
     def copy(self):
         'Use to avoid destructive operations'
@@ -143,10 +144,22 @@ def new_Potential(prob_list, shape_list, dim_names, conditionings = None, the_va
     return Potential(p, nsh)
 
 # No problem with mapping single arg functions over tensors!  
-def delta_utility(x, exponand = 0.5, normalize = 50):
-    dims = x.get_named_dims()
-    u = 4/3*(1 - pow(exponand, (x.cpt/normalize)))
-    return Potential(u, dims)
+# # TODO cf potential operations delta_utility
+# def delta_utility(x, exponand = 0.5, normalize = 50):
+#     dims = x.get_named_dims()
+#     u = 4/3*(1 - pow(exponand, (x.cpt/normalize)))
+#     return Potential(u, dims)
+
+def delta_utility(a_value, **kwargs):
+    'Transformation from value to utility'
+    # dims = a_potential.get_named_dims()
+    a_utility = 4/3*(1 - pow(kwargs['exponand'], (a_value/kwargs['normalize'])))
+    return a_utility 
+
+def delta_inverse_utility(a_utility, **kwargs):
+    'Inverse transformation from utility back to value'
+    a_value = kwargs['normalize'] * np.log(1 - 3*a_utility/4)/np.log(kwargs['exponand'])
+    return a
 
 ### Main #######################################################
 if __name__ == '__main__':
