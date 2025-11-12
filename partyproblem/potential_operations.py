@@ -199,6 +199,27 @@ def marginalize_utility(u_potential: Potential, its_parent:Potential) -> Potenti
     reduced_dims = unpeeled_utility.remove_dim(parent_marginal)
     return Potential(cond_expected_utility, reduced_dims)
 
+# an awkward way to index an arbitrary rank array with a list of lenght == rank
+def list_indexer(a_tr, indexes):
+    '''Syntax to index using a list. If the list does not include all ranks, 
+    a sub-tensor is returned of the remaining dims.'''
+    for an_index in indexes:
+        a_tr = a_tr[an_index,...]
+    return a_tr
+
+def list_assigner(a_tr, indexes):
+    'Syntax to index using a list. If the list does not include all ranks, a sub-tensor is returned of the remaining dims.'
+    sliced_tr = a_tr
+    for k, an_index in enumerate(indexes):
+
+        if k == len(indexes) -1:
+           print(a_tr[an_index,...])
+           sliced_tr[an_index,...] = 1.0 
+           # return a_tr
+        else:
+            sliced_tr = sliced_tr[an_index,...]
+    return a_tr
+
 def maximize_utility(expected_utility: Potential, decision_p: Potential) -> tuple[Potential, Potential]:
     '''Find the maximum utility over a decision variable.
     This operation is used to optimize a decision based on expected utility.
@@ -206,7 +227,7 @@ def maximize_utility(expected_utility: Potential, decision_p: Potential) -> tupl
     utility value for each combination of other conditioning variables.
 
     Returns a tuple of two Potentials:
-    1. max_utility_potential: The utility potential with the decision variable marginalized out by maximization.
+    1. max_utility_potential: The utility potential with the decision variable maximized out by maximization.
     2. policy_potential: A potential representing the optimal policy, i.e., the index of the
        decision state that yields the maximum utility for each conditioning state.
        (This should replace the decision variable potential. )
@@ -227,9 +248,13 @@ def maximize_utility(expected_utility: Potential, decision_p: Potential) -> tupl
     max_utility_potential = Potential(max_utility_values, max_utility_dims)
     # TODO Reflate the policy indicies as a 0 - 1 matrix. Use the decn named dims instead
     max_policy = torch.zeros(decision_p.get_dim_sizes())
-    for choice in range(list(decision_p.cpt.shape)[0]):  #TODO Assumes only one conditioning var. 
-        max_policy[choice, policy_indicies[choice]] = 1
-
+    # A hack for one dim utility functions
+    # TODO Use "list_assigner() " instead
+    if len(max_policy.shape) == 1:
+        max_policy[policy_indicies] = 1
+    else:
+        for a_policy, a_index in zip(max_policy, policy_indicies):
+            a_policy[a_index] = 1
     decision_p.policy = max_policy 
     return max_utility_potential, decision_p
     
@@ -352,21 +377,13 @@ if __name__ == '__main__':
     u_potential.pr_potential()
     print()
 
-    ### decision 
-    ex_p, policy_p = maximize_utility(u_potential, new_decn)
-
-    z = named_tensor_apply(u_potential, delta_utility, exponand = 0.5, normalize = 50)
-    print(z)
+    risk_averse_u = named_tensor_apply(u_potential, delta_utility, exponand = 0.5, normalize = 50)
+    print(risk_averse_u)
+    #  delta_inverse_utility
+    z1 = named_tensor_apply((risk_averse_u), delta_inverse_utility, exponand = 0.5, normalize = 50)
+    print(z1)
     drop_final_singleton_dimension(u_potential).pr_potential()
     print('\n')
-
-    # TODO Make decision for utility with no parents
-    print('\nMarginalize utility', '#'*20)
-    utils = [1, 10, 0]
-    u_potential = new_Potential(utils, [ n_options,  1], ['location', 'value'])
-    u_potential.pr_potential()
-    print('Expected utility: ')
-    marginalize_utility(u_potential, Potential(torch.empty(0), OrderedDict())).pr_potential()
 
     print('\nMarginalize parent from utility', '#'*10)
     root_parent = new_Potential([0.7, 0.3], [2], ['uncertainty'])
@@ -378,6 +395,23 @@ if __name__ == '__main__':
     marginalize_utility(u_potential, root_parent).pr_potential()
 
     # TODO marginalize utility for conditioned parents. 
+    print('\nMaximize utility', '#'*20)
+    ### decision 
+    ex_p, policy_p = maximize_utility(u_potential, new_decn)
+    print(ex_p.pr_potential())
+    print('policy: ', policy_p.policy)
+
+    # TODO Make decision for utility with no parents
+    print('\nMaximize utility, no parent.', '#'*20)
+    utils = [1, 10, 0]
+    u_potential = new_Potential(utils, [ n_options,  1], ['location', 'value'])
+    u_potential.pr_potential()
+    print('Expected utility: ')
+    ex_p, policy_p = maximize_utility(u_potential, decn)
+    ex_p.pr_potential()
+    print('policy: ', policy_p.policy)
+
+
 
 
 

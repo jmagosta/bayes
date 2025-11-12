@@ -208,7 +208,7 @@ class BN (object):
         else:
             # Stack dimensions for parents
             # TODO we need the parents names and sizes
-            return condition_decision(unconditioned_d, the_observation: Potential)
+            return condition_decision(unconditioned_d, the_observation)
 
     # Note: Node extensions also have the display name of the node, which is an
     # alternative to it's id. 

@@ -7,6 +7,7 @@
 # Create a labelled dimension object.
 # An OrderedDict preserves the insertion order of entries. 
 from collections import OrderedDict
+import numpy as np
 import torch
 
 DEBUG = 1
@@ -143,6 +144,11 @@ def new_Potential(prob_list, shape_list, dim_names, conditionings = None, the_va
     nsh = OrderedDict(zip(dim_names, conditionings))
     return Potential(p, nsh)
 
+def empty_potential() -> Potential:
+    'Return a zero length, zero dimension Potential'
+    # Useful when maximizing a utility with no parents
+    return Potential(torch.empty(0), OrderedDict() )
+
 # No problem with mapping single arg functions over tensors!  
 # # TODO cf potential operations delta_utility
 # def delta_utility(x, exponand = 0.5, normalize = 50):
@@ -159,7 +165,7 @@ def delta_utility(a_value, **kwargs):
 def delta_inverse_utility(a_utility, **kwargs):
     'Inverse transformation from utility back to value'
     a_value = kwargs['normalize'] * np.log(1 - 3*a_utility/4)/np.log(kwargs['exponand'])
-    return a
+    return a_value
 
 ### Main #######################################################
 if __name__ == '__main__':
