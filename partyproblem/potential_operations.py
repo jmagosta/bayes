@@ -220,7 +220,7 @@ def list_assigner(a_tr, indexes):
             sliced_tr = sliced_tr[an_index,...]
     return a_tr
 
-def maximize_utility(expected_utility: Potential, decision_p: Potential) -> tuple[Potential, Potential]:
+def maximize_utility(u_potential: Potential, decision_p: Potential) -> tuple[Potential, Potential]:
     '''Find the maximum utility over a decision variable.
     This operation is used to optimize a decision based on expected utility.
     It removes the decision variable from the potential, retaining the maximum
@@ -242,7 +242,7 @@ def maximize_utility(expected_utility: Potential, decision_p: Potential) -> tupl
     decision_var = decision_p.get_marginal_name()
     # TODO Check if the utility dims need to move the decn var to last place 
     decision_dim_idx = unpeeled_utility.find_var(decision_var)
-    max_utility_values, policy_indicies = torch.max(expected_utility.cpt, dim=decision_dim_idx)
+    max_utility_values, policy_indicies = torch.max(u_potential.cpt, dim=decision_dim_idx)
 
     max_utility_dims = unpeeled_utility.remove_dim(decision_var)
     max_utility_potential = Potential(max_utility_values, max_utility_dims)
