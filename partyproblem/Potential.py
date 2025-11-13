@@ -32,7 +32,7 @@ class Potential (object):  # A named tensor
     #type hints
     cpt: torch.Tensor
     named_dims: OrderedDict
-    policy: torch.Tensor
+    # policy: Potential  # why isn't this allowed? It works without this. 
 
     def __init__(self, cpt, n_dims):
         ' cpt  - multidim tensor, named_dims: OrderedDict '

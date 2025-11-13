@@ -197,6 +197,7 @@ def marginalize_utility(u_potential: Potential, its_parent:Potential) -> Potenti
     joint = unpeeled_utility.cpt * its_parent.cpt
     cond_expected_utility = joint.sum(-1)
     reduced_dims = unpeeled_utility.remove_dim(parent_marginal)
+    # TODO - add the singleton dim back to the utility ? 
     return Potential(cond_expected_utility, reduced_dims)
 
 # an awkward way to index an arbitrary rank array with a list of lenght == rank
@@ -245,8 +246,9 @@ def maximize_utility(u_potential: Potential, decision_p: Potential) -> tuple[Pot
     max_utility_values, policy_indicies = torch.max(u_potential.cpt, dim=decision_dim_idx)
 
     max_utility_dims = unpeeled_utility.remove_dim(decision_var)
+    # Add back the value dimension TODO - borrow the name that was dropped. 
+    max_utility_dims['value'] = 'v'
     max_utility_potential = Potential(max_utility_values, max_utility_dims)
-    # TODO Reflate the policy indicies as a 0 - 1 matrix. Use the decn named dims instead
     max_policy = torch.zeros(decision_p.get_dim_sizes())
     # A hack for one dim utility functions
     # TODO Use "list_assigner() " instead
@@ -255,7 +257,8 @@ def maximize_utility(u_potential: Potential, decision_p: Potential) -> tuple[Pot
     else:
         for a_policy, a_index in zip(max_policy, policy_indicies):
             a_policy[a_index] = 1
-    decision_p.policy = max_policy 
+    decision_p.policy = Potential(max_policy, decision_p.get_named_dims())
+    # TODO add named dims. 
     return max_utility_potential, decision_p
     
 
@@ -314,16 +317,6 @@ def drop_final_singleton_dimension(the_potential):
     # x = the_potential.cpt.squeeze(1)
     return Potential(the_potential.cpt.squeeze(-1), reduced_dims)
 
-# def delta_utility(a_value, **kwargs):
-#     'Transformation from value to utility'
-#     # dims = a_potential.get_named_dims()
-#     a_utility = 4/3*(1 - pow(kwargs['exponand'], (a_value/kwargs['normalize'])))
-#     return a_utility 
-
-# def delta_inverse_utility(a_utility, **kwargs):
-#     'Inverse transformation from utility back to value'
-#     a_value = kwargs['normalize'] * np.log(1 - 3*a_utility/4)/np.log(kwargs['exponand'])
-#     return a_value
 
 ### Main
 
