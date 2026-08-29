@@ -130,7 +130,7 @@ if __name__ == '__main__':
 
     a_potential = new_Potential([0.1, 0.9, 0.4, 0.6], [2,2], ['margin', 'condition'])
     p_potential = new_Potential([0.04, 0.96], [2,1], ['condition']  )
-    print(p_potential.p * a_potential.p)
+    print(p_potential.cpt * a_potential.cpt)
     print(marginalize_last(a_potential, p_potential))
 
   

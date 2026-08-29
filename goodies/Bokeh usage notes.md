@@ -104,10 +104,14 @@ To add annotations, one plots text labels at x,y coordinates. The data comes fro
     labels = LabelSet(x=x, y=y, text=labels, source=datasource)
     p.add_layout(labels)
 
+[Deprecated]
 instead  use `text()` for alignment, and multi-line options: 
 
     p.text(x, y, text=["(%d, %d)" % (q,r) for (q, r) in zip(q, r)],
        text_baseline="middle", text_align="center", text_color='navy', text_font_size="26px")) 
+
+    my_label = Label(x=5, y=10, text="Important Point", text_font_size="14pt", text_color="red")
+    p.add_layout(my_label)
 
 For a rectangular area glyph that spans the plot:
 
