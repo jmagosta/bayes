@@ -14,4 +14,4 @@ Log.ini
 *.joblib
 secret.py
 .vscode/settings.json
-
+.ipynb*/
